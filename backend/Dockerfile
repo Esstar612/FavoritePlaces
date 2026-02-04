@@ -36,12 +36,13 @@ COPY --chown=nodejs:nodejs . .
 # Switch to non-root user
 USER nodejs
 
-# Expose port
-EXPOSE 3000
+# Cloud Run requires PORT 8080
+ENV PORT=8080
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+  CMD node -e "require('http').get('http://localhost:8080/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
 
 # Start server
 CMD ["node", "server.js"]

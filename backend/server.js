@@ -37,7 +37,7 @@ console.log('✅ Firebase Admin initialized');
 // EXPRESS APP SETUP
 // ═══════════════════════════════════════════════════════════════════════════
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPORT ROUTES (AFTER FIREBASE INITIALIZATION)
