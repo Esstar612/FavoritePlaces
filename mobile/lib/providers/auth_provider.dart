@@ -11,7 +11,7 @@ final authStateProvider = StreamProvider<User?>((ref) {
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   AuthNotifier() : super(const AsyncValue.data(null));
 
-  // ── Email / Password sign-up ─────────────────────────────────────────────
+ 
 // ── Email / Password sign-up ─────────────────────────────────────────────
 Future<void> signUpWithEmail(String email, String password, String displayName) async {
   state = const AsyncValue.loading();
@@ -21,12 +21,18 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
 
     // Set the display name on the new user
     await credential.user?.updateDisplayName(displayName);
+    
+    // Force reload to ensure the display name is updated
     await credential.user?.reload();
-
+    
+    // Get the updated user
+    final updatedUser = FirebaseAuth.instance.currentUser;
+    
     state = const AsyncValue.data(null);
     
     // User is now automatically signed in!
-    // AuthGate will detect the auth state change and navigate to PlacesScreen
+    // The authStateChanges stream will emit and AuthGate will navigate
+    print('Sign up successful! User: ${updatedUser?.email}');
   } on FirebaseAuthException catch (e) {
     state = AsyncValue.error(e, StackTrace.empty);
   } catch (e, st) {

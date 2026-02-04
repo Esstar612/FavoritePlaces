@@ -82,7 +82,8 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   Widget build(BuildContext context) {
     final allPlaces = ref.watch(userPlacesProvider);
     final filteredPlaces = _getFilteredAndSortedPlaces();
-
+    final user = ref.watch(authStateProvider).value;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Favorite Places'),
@@ -135,7 +136,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                 radius: 16,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 child: Text(
-                  (FirebaseAuth.instance.currentUser?.displayName ?? 'U')[0].toUpperCase(),
+                  (user?.displayName ?? user?.email ?? 'U')[0].toUpperCase(),
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),

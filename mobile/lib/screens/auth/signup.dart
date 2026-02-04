@@ -28,33 +28,35 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   }
 
   Future<void> _signUp() async {
-    // ── local validation ───────────────────────────────────────────────────
-    if (_nameController.text.trim().isEmpty) {
-      _showSnackBar('Please enter your name');
-      return;
-    }
-    if (_emailController.text.trim().isEmpty) {
-      _showSnackBar('Please enter your email');
-      return;
-    }
-    if (_passwordController.text.trim().length < 6) {
-      _showSnackBar('Password must be at least 6 characters');
-      return;
-    }
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackBar('Passwords do not match');
-      return;
-    }
-
-    await ref.read(authNotifierProvider.notifier).signUpWithEmail(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          _nameController.text.trim(),
-        );
-
-    // If successful the AuthGate will automatically navigate away.
-    // If there was an error the listener below shows the snackbar.
+  // ── local validation ───────────────────────────────────────────────────
+  if (_nameController.text.trim().isEmpty) {
+    _showSnackBar('Please enter your name');
+    return;
   }
+  if (_emailController.text.trim().isEmpty) {
+    _showSnackBar('Please enter your email');
+    return;
+  }
+  if (_passwordController.text.trim().length < 6) {
+    _showSnackBar('Password must be at least 6 characters');
+    return;
+  }
+  if (_passwordController.text != _confirmPasswordController.text) {
+    _showSnackBar('Passwords do not match');
+    return;
+  }
+
+  await ref.read(authNotifierProvider.notifier).signUpWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _nameController.text.trim(),
+      );
+
+  // After successful signup, pop back and let AuthGate handle routing
+  if (mounted) {
+    Navigator.of(context).pop();
+  }
+}
 
   void _showSnackBar(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
