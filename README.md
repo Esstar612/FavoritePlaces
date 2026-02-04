@@ -2,6 +2,14 @@
 
 A full-stack Flutter mobile application for saving and organizing favorite places with AI-powered features using Google Gemini.
 
+![Flutter](https://img.shields.io/badge/Flutter-3.27-02569B?style=flat-square&logo=flutter)
+![Dart](https://img.shields.io/badge/Dart-3.6-0175C2?style=flat-square&logo=dart)
+![Firebase](https://img.shields.io/badge/Firebase-Latest-FFCA28?style=flat-square&logo=firebase)
+![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
+![Cloud Run](https://img.shields.io/badge/Deployed-Cloud%20Run-4285F4?style=flat-square&logo=google-cloud)
+![Gemini AI](https://img.shields.io/badge/AI-Gemini%201.5-8E75B2?style=flat-square&logo=google)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
+
 ## 🎮 Live Demo
 
 **[🚀 Try the App in Your Browser →](https://appetize.io/app/YOUR-APPETIZE-URL)**
