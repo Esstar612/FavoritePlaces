@@ -1,0 +1,37 @@
+name: favorite_places
+description: "Flutter places app with Firebase Auth, Firestore, cloud sync, and AI features."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  uuid: ^4.5.1
+  flutter_riverpod: ^2.6.1
+  image_picker: ^1.1.2
+  location: ^8.0.0
+  http: ^1.3.0
+  google_maps_flutter: ^2.12.1
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  sqflite: ^2.4.2
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.6.12
+  firebase_storage: ^12.3.0
+  google_sign_in: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
