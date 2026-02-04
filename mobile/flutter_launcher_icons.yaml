@@ -1,0 +1,7 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
+  adaptive_icon_background: "#FF8E53"  # Sunset orange
+  adaptive_icon_foreground: "assets/app_icon.png"
+  remove_alpha_ios: true
