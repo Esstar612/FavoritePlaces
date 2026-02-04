@@ -3,6 +3,8 @@ import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/screens/profile.dart';
 import 'package:favorite_places/widgets/places_list.dart';
+import 'package:favorite_places/providers/auth_provider.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

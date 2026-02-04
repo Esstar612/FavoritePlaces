@@ -1,0 +1,52 @@
+name: Deploy to Appetize
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'mobile/**'
+
+jobs:
+  deploy-appetize:
+    name: Build and Deploy to Appetize.io
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+      
+      - name: 📦 Install dependencies
+        run: |
+          cd mobile
+          flutter pub get
+      
+      - name: 🔨 Build APK
+        run: |
+          cd mobile
+          flutter build apk --release
+      
+      - name: 📤 Upload to Appetize.io
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+          APPETIZE_KEY: ${{ secrets.APPETIZE_PUBLIC_KEY }}
+        run: |
+          curl -X POST https://api.appetize.io/v1/apps/$APPETIZE_KEY \
+            -F file=@mobile/build/app/outputs/flutter-apk/app-release.apk \
+            -u $APPETIZE_TOKEN:
+      
+      - name: ✅ Success
+        run: |
+          echo "🎉 APK successfully uploaded to Appetize!"
+          echo "📱 Your app is live at: https://appetize.io/app/${{ secrets.APPETIZE_PUBLIC_KEY }}"
