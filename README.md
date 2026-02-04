@@ -89,8 +89,6 @@ A full-stack Flutter mobile application for saving and organizing favorite place
   <img src="screenshots/place-detail.png" width="250" />
 </div>
 
-*Add screenshots to a `/screenshots` folder in your repo*
-
 ---
 
 ## 🚀 Getting Started
