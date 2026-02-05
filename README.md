@@ -12,7 +12,7 @@ A full-stack Flutter mobile application for saving and organizing favorite place
 
 ## 🎮 Live Demo
 
-**[🚀 Try the App in Your Browser →]([https://appetize.io/app/YOUR-APPETIZE-URL](https://appetize.io/app/b_3ngeiuwtjjg7qmxhieybnpzq4u))**
+**[🚀 Try the App in Your Browser →]([https://appetize.io/app/b_3ngeiuwtjjg7qmxhieybnpzq4u]**
 
 *No download required! Runs in a simulated Android device via Appetize.io*
 
