@@ -1,6 +1,7 @@
 # 🗺️ Favorite Places
 
 A full-stack Flutter mobile application for saving and organizing your favorite locations with AI-powered features using Google Gemini.
+
 ![Flutter](https://img.shields.io/badge/Flutter-3.27-02569B?style=flat-square&logo=flutter)
 ![Dart](https://img.shields.io/badge/Dart-3.6-0175C2?style=flat-square&logo=dart)
 ![Firebase](https://img.shields.io/badge/Firebase-Latest-FFCA28?style=flat-square&logo=firebase)
