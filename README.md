@@ -1,7 +1,13 @@
 # 🗺️ Favorite Places
 
 A full-stack Flutter mobile application for saving and organizing your favorite locations with AI-powered features using Google Gemini.
-
+![Flutter](https://img.shields.io/badge/Flutter-3.27-02569B?style=flat-square&logo=flutter)
+![Dart](https://img.shields.io/badge/Dart-3.6-0175C2?style=flat-square&logo=dart)
+![Firebase](https://img.shields.io/badge/Firebase-Latest-FFCA28?style=flat-square&logo=firebase)
+![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
+![Cloud Run](https://img.shields.io/badge/Deployed-Cloud%20Run-4285F4?style=flat-square&logo=google-cloud)
+![Gemini AI](https://img.shields.io/badge/AI-Gemini%201.5-8E75B2?style=flat-square&logo=google)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 [![Live Demo](https://img.shields.io/badge/Demo-Live%20on%20Appetize-orange?style=for-the-badge&logo=android)](https://appetize.io/app/b_3ngeiuwtjjg7qmxhieybnpzq4u)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/Esstar612/FavoritePlaces)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/star-olaojo/)
