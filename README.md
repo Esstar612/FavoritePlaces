@@ -53,12 +53,11 @@ A full-stack Flutter mobile application for saving and organizing your favorite 
   <img src="screenshots/places-list.png" width="250" alt="Places List"/>
   <img src="screenshots/add-place.png" width="250" alt="Add Place"/>
   <img src="screenshots/add-location.png" width="250" alt="Add Info"/>
-  <img src="screenshots/place-detail.png" width="250" alt="Place Detail"/>
 </div>
 
 <div align="center">
+  <img src="screenshots/place-detail.png" width="250" alt="Place Detail"/>
   <img src="screenshots/place-det-ai.png" width="250" alt="AI Features"/>
-  <img src="screenshots/profile.png" width="250" alt="Profile"/>
   <img src="screenshots/map-view.png" width="250" alt="Map View"/>
 </div>
 
