@@ -39,6 +39,11 @@ console.log('✅ Firebase Admin initialized');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Cloud Run terminates TLS at a front-end proxy, so req.ip is the proxy's
+// address unless we trust one hop of X-Forwarded-For.  Without this the rate
+// limiters below key every caller to the same bucket.
+app.set('trust proxy', 1);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPORT ROUTES (AFTER FIREBASE INITIALIZATION)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -55,23 +60,41 @@ app.use(compression()); // Compress responses
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
 
 // CORS configuration
+// No `credentials` — clients authenticate with a Bearer header, not cookies, and
+// browsers reject `credentials: true` combined with a wildcard origin outright.
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN === '*' 
-    ? '*' 
+  origin: process.env.CORS_ORIGIN === '*'
+    ? '*'
     : process.env.CORS_ORIGIN?.split(',').map(o => o.trim()),
-  credentials: true,
 };
 app.use(cors(corsOptions));
 
+// ───────────────────────────────────────────────────────────────────────────
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+// ───────────────────────────────────────────────────────────────────────────
+const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000; // 15 minutes
+const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
+
+// AI routes: every request costs a Gemini call.
+const aiLimiter = rateLimit({
+  windowMs,
+  max: maxRequests,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use('/ai/', limiter); // Apply only to AI routes
+app.use('/ai/', aiLimiter);
+
+// User routes: cheaper than Gemini, but /user/stats and /user/export each scan
+// the caller's whole places collection, so they still need a ceiling.
+const userLimiter = rateLimit({
+  windowMs,
+  max: maxRequests * 5,
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/user/', userLimiter);
 
 // ───────────────────────────────────────────────────────────────────────────
 // Authentication Middleware
