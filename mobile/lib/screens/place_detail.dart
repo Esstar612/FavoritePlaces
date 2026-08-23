@@ -23,9 +23,20 @@ class PlaceDetailScreen extends ConsumerStatefulWidget {
 
 class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   // ── AI summary state ─────────────────────────────────────────────────────
-  NoteSummary?  _summary;
+  // Freshly generated this session. A summary cached on the place itself takes
+  // precedence, so revisiting never re-bills a model call.
+  PlaceSummary? _summary;
   bool          _loadingSummary = false;
   String?       _summaryError;
+
+  /// The summary to show: whatever we just generated, else the stored one —
+  /// but only while it still matches the current notes.
+  PlaceSummary? _effectiveSummary(Place p) {
+    if (_summary != null) return _summary;
+    final cached = p.summary;
+    if (cached != null && cached.matches(p.notes)) return cached;
+    return null;
+  }
 
   Future<void> _generateSummary(Place p) async {
     setState(() => _summaryError = null);
@@ -41,8 +52,21 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
         category: p.category.name,
         address:  p.location.address,
       );
-      setState(() { _summary = s; _loadingSummary = false; });
+      final summary = PlaceSummary(
+        whyILikedIt:  s.whyILikedIt,
+        tips:         s.tips,
+        bestTimeToGo: s.bestTimeToGo,
+        sourceNotes:  p.notes,
+      );
+      if (!mounted) return;
+      setState(() { _summary = summary; _loadingSummary = false; });
+
+      // Cache it. A failure here only costs a regeneration later.
+      try {
+        await ref.read(userPlacesProvider.notifier).saveSummary(p.id, summary);
+      } catch (_) {}
     } catch (e) {
+      if (!mounted) return;
       setState(() { _loadingSummary = false; _summaryError = 'AI unavailable – make sure the backend is running.'; });
     }
   }
@@ -232,44 +256,34 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                   // ── AI Smart Summary ─────────────────────────────────────
                   if (current.notes.isNotEmpty) ...[
                     _sectionTitle(context, 'Smart Summary'),
+                    if (_effectiveSummary(current) case final s?) ...[
+                      _summaryCard(context, s),
+                      const SizedBox(height: 8),
+                    ],
                     if (_loadingSummary)
                       const Center(child: CircularProgressIndicator()),
                     if (_summaryError != null) ...[
                       Text(_summaryError!, style: const TextStyle(color: Colors.grey)),
                       const SizedBox(height: 8),
                     ],
-                    if (_summary != null)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _summaryRow(context, '💡 Why I Liked It', _summary!.whyILikedIt),
-                            const SizedBox(height: 10),
-                            _summaryRow(context, '📝 Tips',            _summary!.tips),
-                            const SizedBox(height: 10),
-                            _summaryRow(context, '🕐 Best Time',       _summary!.bestTimeToGo),
-                          ],
-                        ),
-                      ),
                     // Stays visible after a failure — the error text renders
                     // above it, so a transient backend outage is retryable
-                    // without leaving the screen.
-                    if (_summary == null && !_loadingSummary)
+                    // without leaving the screen. Also offers a refresh once a
+                    // cached summary is showing.
+                    if (!_loadingSummary)
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: () => _generateSummary(current),
-                          icon: const Icon(Icons.auto_awesome),
+                          icon: Icon(_effectiveSummary(current) != null
+                              ? Icons.refresh
+                              : Icons.auto_awesome),
                           label: Text(
-                            _summaryError == null
-                                ? 'Generate Smart Summary'
-                                : 'Try Again',
+                            _summaryError != null
+                                ? 'Try Again'
+                                : _effectiveSummary(current) != null
+                                    ? 'Regenerate'
+                                    : 'Generate Smart Summary',
                           ),
                         ),
                       ),
@@ -383,6 +397,25 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   Widget _sectionTitle(BuildContext context, String title) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(title, style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold)),
+  );
+
+  Widget _summaryCard(BuildContext context, PlaceSummary s) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.25),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _summaryRow(context, '💡 Why I Liked It', s.whyILikedIt),
+        const SizedBox(height: 10),
+        _summaryRow(context, '📝 Tips',            s.tips),
+        const SizedBox(height: 10),
+        _summaryRow(context, '🕐 Best Time',       s.bestTimeToGo),
+      ],
+    ),
   );
 
   Widget _summaryRow(BuildContext context, String label, String value) => Column(

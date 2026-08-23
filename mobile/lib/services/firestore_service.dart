@@ -112,22 +112,40 @@ class FirestoreService {
     });
   }
 
+  // ── SAVE AI SUMMARY (single-field update, cheap) ────────────────────────
+  static Future<void> saveSummary(String id, Map<String, dynamic> summary) async {
+    await _places.doc(id).update({'summary': summary});
+  }
+
   // ── TOGGLE FAVORITE (single-field update, cheap) ────────────────────────
   static Future<void> toggleFavorite(String id, bool value) async {
     await _places.doc(id).update({'isFavorite': value});
   }
 
+  // ── PHOTO CLEANUP ─────────────────────────────────────────────────────────
+  /// Best-effort removal of Storage objects by download URL.
+  ///
+  /// Used both when deleting a place and when replacing its photos — without
+  /// the latter, every edit leaves the previous image orphaned in Storage,
+  /// billable and unreachable.
+  static Future<void> deletePhotos(Iterable<String> urls) async {
+    for (final url in urls) {
+      try {
+        await FirebaseStorage.instance.refFromURL(url).delete();
+      } catch (_) {
+        // Already gone, or not a Storage URL — nothing to do.
+      }
+    }
+  }
+
   // ── DELETE ────────────────────────────────────────────────────────────────
   /// Delete the document AND its photos from Storage.
   static Future<void> deletePlace(String id) async {
-    // Best-effort: delete photos first
     try {
       final doc = await _places.doc(id).get();
-      for (final url in (doc.data()?['photoUrls'] as List?) ?? []) {
-        try {
-          await FirebaseStorage.instance.refFromURL(url as String).delete();
-        } catch (_) {}
-      }
+      await deletePhotos(
+        ((doc.data()?['photoUrls'] as List?) ?? const []).map((u) => u as String),
+      );
     } catch (_) {}
 
     await _places.doc(id).delete();

@@ -49,6 +49,42 @@ class PlaceLocation {
   final String address;
 }
 
+/// A generated summary plus the notes it was generated from, so it can be
+/// invalidated when the notes change instead of being regenerated on every view.
+class PlaceSummary {
+  const PlaceSummary({
+    required this.whyILikedIt,
+    required this.tips,
+    required this.bestTimeToGo,
+    required this.sourceNotes,
+  });
+
+  final String whyILikedIt;
+  final String tips;
+  final String bestTimeToGo;
+  final String sourceNotes;
+
+  /// True when [notes] still matches what this summary was built from.
+  bool matches(String notes) => notes.trim() == sourceNotes.trim();
+
+  Map<String, dynamic> toMap() => {
+        'whyILikedIt': whyILikedIt,
+        'tips': tips,
+        'bestTimeToGo': bestTimeToGo,
+        'sourceNotes': sourceNotes,
+      };
+
+  static PlaceSummary? fromMap(Map<String, dynamic>? m) {
+    if (m == null) return null;
+    return PlaceSummary(
+      whyILikedIt:  m['whyILikedIt']  as String? ?? '',
+      tips:         m['tips']         as String? ?? '',
+      bestTimeToGo: m['bestTimeToGo'] as String? ?? '',
+      sourceNotes:  m['sourceNotes']  as String? ?? '',
+    );
+  }
+}
+
 class Place {
   Place({
     required this.title,
@@ -60,6 +96,7 @@ class Place {
     this.notes     = '',
     this.rating    = 0,
     this.isFavorite = false,
+    this.summary,
     DateTime? visitDate,
     DateTime? createdAt,
     String?   id,
@@ -77,6 +114,7 @@ class Place {
   final String notes;
   final int    rating;
   final bool   isFavorite;
+  final PlaceSummary? summary;   // cached AI summary, null until generated
   final DateTime visitDate;
   final DateTime createdAt;
 
@@ -87,6 +125,7 @@ class Place {
     String? title, List<File>? images, List<String>? photoUrls,
     PlaceLocation? location, PlaceCategory? category, List<String>? tags,
     String? notes, int? rating, bool? isFavorite, DateTime? visitDate,
+    PlaceSummary? summary,
   }) => Place(
     id: id, createdAt: createdAt,
     title:      title      ?? this.title,
@@ -98,6 +137,7 @@ class Place {
     notes:      notes      ?? this.notes,
     rating:     rating     ?? this.rating,
     isFavorite: isFavorite ?? this.isFavorite,
+    summary:    summary    ?? this.summary,
     visitDate:  visitDate  ?? this.visitDate,
   );
 
@@ -127,6 +167,9 @@ class Place {
       notes:      (data['notes'] as String?) ?? '',
       rating:     (data['rating'] as int?) ?? 0,
       isFavorite: (data['isFavorite'] as bool?) ?? false,
+      summary:    PlaceSummary.fromMap(
+        (data['summary'] as Map?)?.cast<String, dynamic>(),
+      ),
       visitDate:  vd,
       createdAt:  ca,
     );

@@ -73,7 +73,8 @@ class UserPlacesNotifier extends StateNotifier<List<Place>> {
   // ── UPDATE ──────────────────────────────────────────────────────────────
   Future<void> updatePlace(Place place) async {
     // If the caller swapped in new local images, upload them; otherwise keep existing URLs
-    final urls = place.images.isNotEmpty
+    final replaced = place.images.isNotEmpty;
+    final urls = replaced
         ? await FirestoreService.uploadPhotos(place.images)
         : place.photoUrls;
 
@@ -91,6 +92,21 @@ class UserPlacesNotifier extends StateNotifier<List<Place>> {
       isFavorite: place.isFavorite,
       visitDate:  place.visitDate.toIso8601String(),
     );
+
+    // Only once the document points at the new URLs — otherwise a failed write
+    // would leave the place referencing images that no longer exist.
+    if (replaced) {
+      await FirestoreService.deletePhotos(
+        place.photoUrls.where((u) => !urls.contains(u)),
+      );
+    }
+  }
+
+  // ── CACHE AI SUMMARY ────────────────────────────────────────────────────
+  /// Persist a generated summary so revisiting the place doesn't re-bill a
+  /// model call. The stream echoes the write back into state.
+  Future<void> saveSummary(String placeId, PlaceSummary summary) async {
+    await FirestoreService.saveSummary(placeId, summary.toMap());
   }
 
   // ── TOGGLE FAVORITE ─────────────────────────────────────────────────────

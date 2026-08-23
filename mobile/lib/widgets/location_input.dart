@@ -4,7 +4,6 @@ import 'package:favorite_places/config.dart';
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/screens/map.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
 
@@ -162,17 +161,27 @@ class _LocationInputState extends State<LocationInput> {
   }
 
   void _selectOnMap() async {
-    final pickedLocation = await Navigator.of(context).push<LatLng>(
+    final picked = await Navigator.of(context).push<PlaceLocation>(
       MaterialPageRoute(
-        builder: (ctx) => const MapScreen(),
+        // Start where the place already is when editing, rather than making
+        // the user find it again.
+        builder: (ctx) => MapScreen(location: _pickedLocation),
       ),
     );
 
-    if (pickedLocation == null) {
-      return;
-    }
+    if (picked == null) return;
 
-    _savePlace(pickedLocation.latitude, pickedLocation.longitude);
+    if (picked.address.isNotEmpty) {
+      // Places search already resolved the address — no geocoding needed.
+      setState(() {
+        _pickedLocation = picked;
+        _isGettingLocation = false;
+      });
+      widget.onSelectLocation(picked);
+    } else {
+      // Dropped by tapping the map, so we still need a reverse lookup.
+      _savePlace(picked.latitude, picked.longitude);
+    }
   }
 
   @override

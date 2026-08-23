@@ -120,17 +120,18 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
     }
   }
 
-  // ── does the user have at least one photo (new or existing)? ────────────
-  bool get _hasPhoto => _newImages.isNotEmpty || _existingUrls.isNotEmpty;
-
   // ── save ─────────────────────────────────────────────────────────────────
   Future<void> _savePlace() async {
     final title = _titleController.text.trim();
-    if (title.isEmpty || !_hasPhoto || _selectedLocation == null) {
+    // A photo is optional — the point of the app is capturing a place quickly,
+    // and the list/detail views already render a placeholder without one.
+    if (title.isEmpty || _selectedLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in title, add at least one photo, and select a location'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(title.isEmpty
+              ? 'Give the place a name'
+              : 'Choose a location for this place'),
+          duration: const Duration(seconds: 2),
         ),
       );
       return;
@@ -263,7 +264,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
             const SizedBox(height: 16),
 
             // ── Photo ──────────────────────────────────────────────────────
-            Text('Photo *', style: Theme.of(context).textTheme.titleMedium),
+            Text('Photo', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             ImageInput(
               initialImageUrl: _existingUrls.isNotEmpty ? _existingUrls.first : null,
