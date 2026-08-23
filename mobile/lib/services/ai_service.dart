@@ -5,6 +5,21 @@ import 'package:http/http.dart' as http;
 
 import 'package:favorite_places/config.dart';
 
+/// Result of POST /ai/smart-search
+class SmartSearchResult {
+  const SmartSearchResult({required this.matchingIds, required this.explanation});
+
+  final List<String> matchingIds;
+  final String explanation;
+
+  factory SmartSearchResult.fromJson(Map<String, dynamic> json) => SmartSearchResult(
+        matchingIds: ((json['matchingIds'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        explanation: json['explanation'] as String? ?? '',
+      );
+}
+
 /// Result of POST /ai/summarize-notes
 class NoteSummary {
   const NoteSummary({
@@ -100,5 +115,34 @@ class AIService {
         .map((t) => t.toString())
         .where((t) => t.trim().isNotEmpty)
         .toList();
+  }
+
+  // ─── POST /ai/smart-search ────────────────────────────────────────────────
+  /// Natural-language search over the user's own places, e.g.
+  /// "somewhere quiet to work" or "where did I get good coffee".
+  ///
+  /// The whole place list is sent so the model can reason over it; the backend
+  /// caps how many it will consider. Call this on an explicit action, never
+  /// per keystroke — each call is a model request.
+  Future<SmartSearchResult> smartSearch({
+    required String query,
+    required List<Map<String, dynamic>> places,
+  }) async {
+    final url = Uri.parse('${AppConfig.backendUrl}/ai/smart-search');
+    final headers = await _authHeaders();
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'query': query, 'places': places}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('AI smart-search failed: ${response.statusCode} – ${response.body}');
+    }
+
+    return SmartSearchResult.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 }

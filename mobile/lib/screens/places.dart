@@ -4,6 +4,7 @@ import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/screens/profile.dart';
 import 'package:favorite_places/widgets/places_list.dart';
 import 'package:favorite_places/providers/auth_provider.dart';
+import 'package:favorite_places/services/ai_service.dart';
 import 'package:favorite_places/utils/user_display.dart';
 
 import 'package:flutter/material.dart';
@@ -28,6 +29,13 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   SortOption _sortOption = SortOption.recent;
   bool _showFavoritesOnly = false;
 
+  // ── AI smart-search state ────────────────────────────────────────────────
+  // When non-null, the list is restricted to these ids instead of the plain
+  // substring match. Cleared whenever the query text changes.
+  List<String>? _aiMatchIds;
+  String? _aiExplanation;
+  bool _aiSearching = false;
+
   @override
   void initState() {
     super.initState();
@@ -40,14 +48,59 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
     super.dispose();
   }
 
+  void _clearAiSearch() {
+    if (_aiMatchIds == null && _aiExplanation == null) return;
+    setState(() { _aiMatchIds = null; _aiExplanation = null; });
+  }
+
+  /// Ask the backend to interpret the query against this user's places.
+  /// Deliberately an explicit action — every call is a model request, so
+  /// running it per keystroke would be wasteful and slow.
+  Future<void> _runAiSearch() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+
+    final places = ref.read(userPlacesProvider);
+    if (places.isEmpty) return;
+
+    setState(() { _aiSearching = true; _aiExplanation = null; });
+    try {
+      final result = await AIService().smartSearch(
+        query: query,
+        places: places.map((p) => {
+          'id': p.id,
+          'title': p.title,
+          'category': p.category.name,
+          'tags': p.tags,
+          'notes': p.notes,
+        }).toList(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _aiMatchIds   = result.matchingIds;
+        _aiExplanation = result.explanation;
+        _aiSearching  = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _aiSearching = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Smart search unavailable right now.')),
+      );
+    }
+  }
+
   List<Place> _getFilteredAndSortedPlaces() {
     var places = ref.watch(userPlacesProvider);
     
     // Create mutable copy
     var filtered = List<Place>.from(places);
     
-    // Filter by search
-    if (_searchQuery.isNotEmpty) {
+    // Filter by search — AI results take precedence over the substring match
+    if (_aiMatchIds != null) {
+      final ids = _aiMatchIds!.toSet();
+      filtered = filtered.where((p) => ids.contains(p.id)).toList();
+    } else if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((place) {
         final query = _searchQuery.toLowerCase();
         return place.title.toLowerCase().contains(query) ||
@@ -165,31 +218,89 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search places, tags, notes...',
+                  hintText: 'Search, or ask "somewhere quiet to work"',
                   prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_searchQuery.isNotEmpty)
+                        IconButton(
                           icon: const Icon(Icons.clear),
+                          tooltip: 'Clear',
                           onPressed: () {
                             _searchController.clear();
+                            _clearAiSearch();
                             setState(() {
                               _searchQuery = '';
                             });
                           },
-                        )
-                      : null,
+                        ),
+                      IconButton(
+                        icon: _aiSearching
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_awesome),
+                        tooltip: 'Ask AI',
+                        onPressed: (_aiSearching || _searchQuery.trim().isEmpty)
+                            ? null
+                            : _runAiSearch,
+                      ),
+                    ],
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
                 ),
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _runAiSearch(),
                 onChanged: (value) {
+                  // A new query invalidates the previous AI result.
+                  _clearAiSearch();
                   setState(() {
                     _searchQuery = value;
                   });
                 },
               ),
             ),
+
+            // ── AI answer banner ───────────────────────────────────────────
+            if (_aiExplanation != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.auto_awesome, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _aiExplanation!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: _clearAiSearch,
+                        child: const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: Icon(Icons.close, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
             // Filter Chips
             if (allPlaces.isNotEmpty)
