@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// Every document is owned by exactly one signed-in user.  Ownership on `places`
+// is carried by the `userId` field, which the client sets on create
+// (see mobile/lib/services/firestore_service.dart addPlace).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // ── places ──────────────────────────────────────────────────────────────
+    // Reads are per-document; the client's list query filters on
+    // `userId == uid`, which satisfies these rules.
+    match /places/{placeId} {
+      allow read, delete: if signedIn()
+                          && resource.data.userId == request.auth.uid;
+
+      allow create: if signedIn()
+                    && request.resource.data.userId == request.auth.uid;
+
+      // Both sides checked so an owner cannot reassign a place to someone else.
+      allow update: if signedIn()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ── users ───────────────────────────────────────────────────────────────
+    // Profile + settings documents, keyed by uid.  Written by the backend with
+    // Admin credentials (which bypass these rules) and read by nothing else.
+    match /users/{userId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

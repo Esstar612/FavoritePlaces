@@ -404,7 +404,7 @@ gcloud run deploy favorite-places-backend \
   --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars "NODE_ENV=production" \
-  --set-secrets "GEMINI_API_KEY=gemini-key:latest,FIREBASE_CONFIG=firebase-config:latest"
+  --set-secrets "GEMINI_API_KEY=gemini-key:latest,FIREBASE_SERVICE_ACCOUNT_JSON=firebase-config:latest"
 ```
 
 3. **Create secrets:**
@@ -436,7 +436,7 @@ heroku create your-app-name
 # Set environment variables
 heroku config:set GEMINI_API_KEY=your-key
 heroku config:set NODE_ENV=production
-heroku config:set FIREBASE_CONFIG='paste-entire-service-account-json'
+heroku config:set FIREBASE_SERVICE_ACCOUNT_JSON='paste-entire-service-account-json'
 
 # Deploy
 git push heroku main

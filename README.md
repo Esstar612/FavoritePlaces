@@ -7,7 +7,7 @@ A full-stack Flutter mobile application for saving and organizing your favorite 
 ![Firebase](https://img.shields.io/badge/Firebase-Latest-FFCA28?style=flat-square&logo=firebase)
 ![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
 ![Cloud Run](https://img.shields.io/badge/Deployed-Cloud%20Run-4285F4?style=flat-square&logo=google-cloud)
-![Gemini AI](https://img.shields.io/badge/AI-Gemini%201.5-8E75B2?style=flat-square&logo=google)
+![Gemini AI](https://img.shields.io/badge/AI-Gemini%202.5-8E75B2?style=flat-square&logo=google)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
 ---
@@ -79,7 +79,7 @@ A full-stack Flutter mobile application for saving and organizing your favorite 
 ### Backend (REST API)
 - **Runtime:** Node.js 20 (Alpine Linux)
 - **Framework:** Express.js with async/await
-- **AI Integration:** Google Gemini 1.5 Flash (1.5M requests/month FREE)
+- **AI Integration:** Google Gemini 2.5 Flash Lite (generous free tier)
 - **Authentication:** Firebase Admin SDK for token verification
 - **Deployment:** Google Cloud Run (serverless, auto-scaling)
 - **Security:** Helmet, CORS, rate limiting, input validation
@@ -99,7 +99,7 @@ A full-stack Flutter mobile application for saving and organizing your favorite 
 |-------|-------------|
 | **Mobile** | Flutter, Dart, Riverpod, Firebase SDK |
 | **Backend** | Node.js, Express, Firebase Admin |
-| **AI** | Google Gemini 1.5 Flash |
+| **AI** | Google Gemini 2.5 Flash Lite |
 | **Database** | Cloud Firestore (NoSQL) |
 | **Storage** | Firebase Storage |
 | **Auth** | Firebase Authentication |
