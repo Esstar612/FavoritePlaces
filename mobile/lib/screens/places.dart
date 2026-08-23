@@ -48,6 +48,18 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
     super.dispose();
   }
 
+  /// Pull-to-refresh. Surfaces failure rather than silently spinning back.
+  Future<void> _refresh() async {
+    try {
+      await ref.read(userPlacesProvider.notifier).refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't refresh. Check your connection.")),
+      );
+    }
+  }
+
   void _clearAiSearch() {
     if (_aiMatchIds == null && _aiExplanation == null) return;
     setState(() { _aiMatchIds = null; _aiExplanation = null; });
@@ -207,9 +219,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          await ref.read(userPlacesProvider.notifier).loadPlaces();
-        },
+        onRefresh: _refresh,
         child: Column(
           children: [
             // Search Bar

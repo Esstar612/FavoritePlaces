@@ -40,9 +40,7 @@ class PlacesList extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        place.isFavorite
-                            ? 'Removed from favorites'
-                            : 'Added to favorites',
+                        place.isFavorite ? 'Removed from favorites' : 'Added to favorites',
                       ),
                       duration: const Duration(seconds: 2),
                     ),
@@ -96,42 +94,52 @@ class PlacesList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (places.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.explore_outlined,
-              size: 100,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+      // Scrollable even though it fits, so the parent RefreshIndicator still
+      // responds — an empty list is exactly when a refresh is wanted.
+      return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.explore_outlined,
+                  size: 100,
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'No places found',
+                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Try adjusting your filters or\ntap + to add your first place!',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              'No places found',
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Try adjusting your filters or\ntap + to add your first place!',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  ),
-            ),
-          ],
+          ),
         ),
       );
     }
-    
+
     return ListView.builder(
       itemCount: places.length,
+      // Allow the pull gesture even when the list is shorter than the screen.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemBuilder: (ctx, index) {
         final place = places[index];
-        
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
@@ -226,7 +234,7 @@ class PlacesList extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  
+
                   // Content
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -261,7 +269,7 @@ class PlacesList extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        
+
                         // Location
                         Row(
                           children: [
@@ -277,13 +285,14 @@ class PlacesList extends ConsumerWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                      color:
+                                          Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     ),
                               ),
                             ),
                           ],
                         ),
-                        
+
                         // Tags
                         if (place.tags.isNotEmpty) ...[
                           const SizedBox(height: 12),
@@ -297,7 +306,10 @@ class PlacesList extends ConsumerWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .secondaryContainer
+                                      .withOpacity(0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -311,7 +323,7 @@ class PlacesList extends ConsumerWidget {
                             }).toList(),
                           ),
                         ],
-                        
+
                         // Notes preview
                         if (place.notes.isNotEmpty) ...[
                           const SizedBox(height: 8),
@@ -336,6 +348,7 @@ class PlacesList extends ConsumerWidget {
       },
     );
   }
+
   Widget _buildPlaceImage(Place place) {
     // Use Firebase Storage URL if available, otherwise local file, otherwise placeholder
     if (place.photoUrls.isNotEmpty) {
@@ -362,7 +375,7 @@ class PlacesList extends ConsumerWidget {
         errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
       );
     }
-    
+
     // Fallback to local file if no cloud URL
     if (place.images.isNotEmpty) {
       return Image.file(
@@ -384,12 +397,11 @@ class PlacesList extends ConsumerWidget {
       height: 180,
       width: double.infinity,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) =>
-          progress == null ? child : _buildPlaceholder(),
+      loadingBuilder: (context, child, progress) => progress == null ? child : _buildPlaceholder(),
       errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
     );
   }
-  
+
   Widget _buildPlaceholder() {
     return Container(
       height: 180,

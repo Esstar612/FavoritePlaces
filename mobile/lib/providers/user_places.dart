@@ -16,6 +16,10 @@ class UserPlacesNotifier extends StateNotifier<List<Place>> {
 
   StreamSubscription<List<Map<String, dynamic>>>? _sub;
 
+  /// Completed by the next snapshot (or error). Lets callers await real data
+  /// instead of returning immediately.
+  Completer<void>? _pending;
+
   /// Call this once after the user is authenticated to start listening.
   ///
   /// Idempotent: AuthGate calls this from build() to cover cold start, so
@@ -26,25 +30,59 @@ class UserPlacesNotifier extends StateNotifier<List<Place>> {
     _sub = FirestoreService.streamPlaces().listen(
       (docs) {
         state = docs.map(Place.fromFirestore).toList();
+        _settle();
       },
       onError: (e) {
-        // Stream errored — leave state as-is; UI can show stale data
+        // Leave state as-is so the UI keeps showing stale data rather than
+        // emptying; refresh() is how the user recovers.
         debugPrint('Firestore stream error: $e');
+        _settle(error: e);
       },
     );
+  }
+
+  void _settle({Object? error}) {
+    final pending = _pending;
+    _pending = null;
+    if (pending == null || pending.isCompleted) return;
+    error == null ? pending.complete() : pending.completeError(error);
   }
 
   /// Stop listening (call on sign-out).
   void stopListening() {
     _sub?.cancel();
     _sub = null;
+    _settle();
     state = const [];
   }
 
-  // ── no-op shim so PlacesScreen.initState doesn't break ─────────────────
-  Future<void> loadPlaces() async {
-    // Firestore stream handles this automatically after startListening().
+  /// Tear the subscription down and rebuild it, completing once fresh data
+  /// arrives.
+  ///
+  /// With a live snapshot listener the list is normally already current, so
+  /// this exists for the case that isn't: a stream that errored stays
+  /// subscribed to nothing and the list is stale forever. Pull-to-refresh is
+  /// the user's way out of that.
+  Future<void> refresh() async {
+    _sub?.cancel();
+    _sub = null;
+
+    final pending = Completer<void>();
+    _pending = pending;
+    startListening();
+
+    try {
+      // Bounded so the gesture can't spin forever with no connection.
+      await pending.future.timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Refresh failed: $e');
+      rethrow;
+    }
   }
+
+  /// Initial load — awaits the first snapshot so the screen can show a
+  /// spinner rather than an empty list.
+  Future<void> loadPlaces() => refresh();
 
   // ── CREATE ──────────────────────────────────────────────────────────────
   Future<void> addPlace(Place place) async {
