@@ -1,13 +1,37 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'providers/user_settings.dart';
 import 'screens/auth_gate.dart';
 
-final colorScheme = ColorScheme.fromSeed(
+const _seedColor = Color.fromARGB(255, 102, 6, 247);
+
+final darkColorScheme = ColorScheme.fromSeed(
   brightness: Brightness.dark,
-  seedColor: const Color.fromARGB(255, 102, 6, 247),
+  seedColor: _seedColor,
   surface: const Color.fromARGB(255, 56, 49, 66),
 );
+
+final lightColorScheme = ColorScheme.fromSeed(
+  brightness: Brightness.light,
+  seedColor: _seedColor,
+);
+
+/// Kept for backwards compatibility with existing references.
+final colorScheme = darkColorScheme;
+
+ThemeData _themeFor(ColorScheme scheme) => ThemeData(
+      useMaterial3: true,
+      // Per-scheme, not shared — a dark surface on the light scheme would be
+      // unreadable.
+      scaffoldBackgroundColor: scheme.surface,
+      colorScheme: scheme,
+      textTheme: const TextTheme(
+        titleSmall: TextStyle(fontWeight: FontWeight.bold),
+        titleMedium: TextStyle(fontWeight: FontWeight.bold),
+        titleLarge: TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
 
 void main() async {
   // Flutter + Firebase both need this before runApp
@@ -17,23 +41,19 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Hydrated from the backend at sign-in by AuthGate.
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       title: 'Favorite Places',
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: colorScheme.surface,
-        colorScheme: colorScheme,
-        textTheme: const TextTheme(
-          titleSmall: TextStyle(fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(fontWeight: FontWeight.bold),
-          titleLarge: TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
+      theme: _themeFor(lightColorScheme),
+      darkTheme: _themeFor(darkColorScheme),
+      themeMode: themeMode,
       // AuthGate decides: login screens or main app
       home: const AuthGate(),
     );
