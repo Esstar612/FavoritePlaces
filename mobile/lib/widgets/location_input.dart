@@ -9,9 +9,16 @@ import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
 
 class LocationInput extends StatefulWidget {
-  const LocationInput({super.key, required this.onSelectLocation});
+  const LocationInput({
+    super.key,
+    required this.onSelectLocation,
+    this.initialLocation,
+  });
 
   final Function(PlaceLocation location) onSelectLocation;
+
+  /// Pre-existing location when editing a place, so the preview isn't blank.
+  final PlaceLocation? initialLocation;
 
   @override
   State<LocationInput> createState() {
@@ -23,6 +30,12 @@ class _LocationInputState extends State<LocationInput> {
   PlaceLocation? _pickedLocation;
   var _isGettingLocation = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _pickedLocation = widget.initialLocation;
+  }
+
   String get locationImage {
     if (_pickedLocation == null) {
       return '';
@@ -30,13 +43,7 @@ class _LocationInputState extends State<LocationInput> {
     
     final lat = _pickedLocation!.latitude;
     final lng = _pickedLocation!.longitude;
-    final url = 'https://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&zoom=16&size=600x300&maptype=roadmap&markers=color:red%7Clabel:A%7C$lat,$lng&key=${AppConfig.googleMapsApiKey}';
-    
-    // Debug: Print the URL and key being used
-    print('🗺️ Static Map URL: $url');
-    print('🔑 API Key from config: ${AppConfig.googleMapsApiKey}');
-    
-    return url;
+    return 'https://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&zoom=16&size=600x300&maptype=roadmap&markers=color:red%7Clabel:A%7C$lat,$lng&key=${AppConfig.googleMapsApiKey}';
   }
 
   void _getCurrentLocation() async {
@@ -140,11 +147,11 @@ class _LocationInputState extends State<LocationInput> {
 
       widget.onSelectLocation(_pickedLocation!);
     } catch (e) {
-      setState(() {
-        _isGettingLocation = false;
-      });
-      
       if (mounted) {
+        setState(() {
+          _isGettingLocation = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to get address: $e'),
@@ -179,25 +186,16 @@ class _LocationInputState extends State<LocationInput> {
     );
 
     if (_pickedLocation != null) {
-      final url = locationImage;
-      print('🗺️ Attempting to load image from: $url');
-      
       previewContent = Image.network(
-        url,
+        locationImage,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
         loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) {
-            print('✅ Image loaded successfully!');
-            return child;
-          }
-          print('⏳ Loading image: ${loadingProgress.cumulativeBytesLoaded} / ${loadingProgress.expectedTotalBytes ?? "unknown"}');
+          if (loadingProgress == null) return child;
           return const Center(child: CircularProgressIndicator());
         },
         errorBuilder: (context, error, stackTrace) {
-          print('❌ Image failed to load: $error');
-          print('Stack trace: $stackTrace');
           return GestureDetector(
             onTap: () {
               Navigator.of(context).push(

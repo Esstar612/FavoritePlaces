@@ -4,8 +4,8 @@ import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/screens/profile.dart';
 import 'package:favorite_places/widgets/places_list.dart';
 import 'package:favorite_places/providers/auth_provider.dart';
+import 'package:favorite_places/utils/user_display.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,6 +22,7 @@ class PlacesScreen extends ConsumerStatefulWidget {
 
 class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   late Future<void> _placesFuture;
+  final _searchController = TextEditingController();
   String _searchQuery = '';
   PlaceCategory? _filterCategory;
   SortOption _sortOption = SortOption.recent;
@@ -31,6 +32,12 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   void initState() {
     super.initState();
     _placesFuture = ref.read(userPlacesProvider.notifier).loadPlaces();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   List<Place> _getFilteredAndSortedPlaces() {
@@ -138,7 +145,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                 radius: 16,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 child: Text(
-                  (user?.displayName ?? user?.email ?? 'U')[0].toUpperCase(),
+                  avatarInitial(user),
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -156,6 +163,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: TextField(
+                controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search places, tags, notes...',
                   prefixIcon: const Icon(Icons.search),
@@ -163,6 +171,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                       ? IconButton(
                           icon: const Icon(Icons.clear),
                           onPressed: () {
+                            _searchController.clear();
                             setState(() {
                               _searchQuery = '';
                             });

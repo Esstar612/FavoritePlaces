@@ -4,9 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ImageInput extends StatefulWidget {
-  const ImageInput({super.key, required this.onPickImage});
+  const ImageInput({
+    super.key,
+    required this.onPickImage,
+    this.initialImageUrl,
+  });
 
   final void Function(File image) onPickImage;
+
+  /// Already-uploaded photo shown when editing, until the user picks a new one.
+  final String? initialImageUrl;
 
   @override
   State<ImageInput> createState() {
@@ -82,6 +89,22 @@ class _ImageInputState extends State<ImageInput> {
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
+        ),
+      );
+    } else if (widget.initialImageUrl != null) {
+      // Editing an existing place: show the stored photo, tap to replace it.
+      content = GestureDetector(
+        onTap: _showImageSourceDialog,
+        child: Image.network(
+          widget.initialImageUrl!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) => TextButton.icon(
+            icon: const Icon(Icons.camera),
+            label: const Text('Take Picture'),
+            onPressed: _showImageSourceDialog,
+          ),
         ),
       );
     }

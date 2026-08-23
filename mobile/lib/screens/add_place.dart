@@ -218,22 +218,8 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
             // ── Photo ──────────────────────────────────────────────────────
             Text('Photo *', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            // If editing and we already have cloud URLs, show a placeholder note
-            if (_existingUrls.isNotEmpty && _newImages.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.photo, size: 28),
-                  const SizedBox(width: 12),
-                  Text('${_existingUrls.length} photo(s) on file'),
-                ]),
-              ),
             ImageInput(
+              initialImageUrl: _existingUrls.isNotEmpty ? _existingUrls.first : null,
               onPickImage: (image) => setState(() => _newImages = [image]),
             ),
             const SizedBox(height: 16),
@@ -242,6 +228,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
             Text('Location *', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             LocationInput(
+              initialLocation: _selectedLocation,
               onSelectLocation: (loc) => setState(() => _selectedLocation = loc),
             ),
             const SizedBox(height: 16),

@@ -28,11 +28,12 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   String?       _summaryError;
 
   Future<void> _generateSummary(Place p) async {
+    setState(() => _summaryError = null);
     if (p.notes.trim().isEmpty) {
       setState(() => _summaryError = 'Add some notes first to generate a summary.');
       return;
     }
-    setState(() { _loadingSummary = true; _summaryError = null; });
+    setState(() { _loadingSummary = true; });
     try {
       final s = await AIService().summarizeNotes(
         title:    p.title,
@@ -43,6 +44,20 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
       setState(() { _summary = s; _loadingSummary = false; });
     } catch (e) {
       setState(() { _loadingSummary = false; _summaryError = 'AI unavailable – make sure the backend is running.'; });
+    }
+  }
+
+  Future<void> _toggleFavorite(String placeId) async {
+    try {
+      await ref.read(userPlacesProvider.notifier).toggleFavorite(placeId);
+    } catch (e) {
+      // The provider updates state optimistically, so a write failure would
+      // otherwise leave the heart showing a value that never reached Firestore.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't update favorite. Try again.")),
+        );
+      }
     }
   }
 
@@ -93,7 +108,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                   current.isFavorite ? Icons.favorite : Icons.favorite_border,
                   color: current.isFavorite ? Colors.red : null,
                 ),
-                onPressed: () => ref.read(userPlacesProvider.notifier).toggleFavorite(current.id),
+                onPressed: () => _toggleFavorite(current.id),
               ),
               // edit
               IconButton(
@@ -133,9 +148,9 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                         ],
                       ),
                     );
-                    if (ok == true && context.mounted) {
+                    if (ok == true) {
                       await ref.read(userPlacesProvider.notifier).deletePlace(current.id);
-                      Navigator.of(context).pop();
+                      if (context.mounted) Navigator.of(context).pop();
                     }
                   }
                 },
@@ -219,8 +234,10 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                     _sectionTitle(context, 'Smart Summary'),
                     if (_loadingSummary)
                       const Center(child: CircularProgressIndicator()),
-                    if (_summaryError != null)
+                    if (_summaryError != null) ...[
                       Text(_summaryError!, style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 8),
+                    ],
                     if (_summary != null)
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -240,13 +257,20 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                           ],
                         ),
                       ),
-                    if (_summary == null && !_loadingSummary && _summaryError == null)
+                    // Stays visible after a failure — the error text renders
+                    // above it, so a transient backend outage is retryable
+                    // without leaving the screen.
+                    if (_summary == null && !_loadingSummary)
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: () => _generateSummary(current),
                           icon: const Icon(Icons.auto_awesome),
-                          label: const Text('Generate Smart Summary'),
+                          label: Text(
+                            _summaryError == null
+                                ? 'Generate Smart Summary'
+                                : 'Try Again',
+                          ),
                         ),
                       ),
                     const SizedBox(height: 24),

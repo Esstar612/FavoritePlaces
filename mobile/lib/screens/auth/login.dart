@@ -44,7 +44,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authNotifierProvider.notifier).resetPassword(
           _emailController.text.trim(),
         );
-    if (mounted) {
+    if (!mounted) return;
+
+    // The notifier's error listener already surfaces failures; without this
+    // guard a failed reset shows a success *and* an error snackbar.
+    if (!ref.read(authNotifierProvider).hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password reset email sent!')),
       );

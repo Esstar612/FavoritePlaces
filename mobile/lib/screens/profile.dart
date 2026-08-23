@@ -10,6 +10,7 @@ import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/services/firestore_service.dart';
 import 'package:favorite_places/screens/settings.dart';
+import 'package:favorite_places/utils/user_display.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -53,7 +54,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     } catch (e) {
       // Silently fail, show local stats instead
-      print('Failed to load backend stats: $e');
+      debugPrint('Failed to load backend stats: $e');
     } finally {
       if (mounted) setState(() => _isLoadingStats = false);
     }
@@ -142,13 +143,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               radius: 48,
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
               child: Text(
-                (user?.displayName ?? 'U')[0].toUpperCase(),
+                avatarInitial(user),
                 style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 12),
             Text(
-              user?.displayName ?? 'User',
+              displayNameOrFallback(user),
               style: Theme.of(context).textTheme.titleLarge!.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

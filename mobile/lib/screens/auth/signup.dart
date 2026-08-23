@@ -52,8 +52,12 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         _nameController.text.trim(),
       );
 
-  // After successful signup, pop back and let AuthGate handle routing
-  if (mounted) {
+  if (!mounted) return;
+
+  // Only leave the screen if the sign-up actually succeeded — popping on an
+  // error (e.g. email-already-in-use) drops the user back on the login screen
+  // as though it had worked.
+  if (!ref.read(authNotifierProvider).hasError) {
     Navigator.of(context).pop();
   }
 }

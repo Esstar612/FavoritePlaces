@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -29,10 +30,10 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
     final updatedUser = FirebaseAuth.instance.currentUser;
     
     state = const AsyncValue.data(null);
-    
+
     // User is now automatically signed in!
     // The authStateChanges stream will emit and AuthGate will navigate
-    print('Sign up successful! User: ${updatedUser?.email}');
+    debugPrint('Sign up successful! User: ${updatedUser?.email}');
   } on FirebaseAuthException catch (e) {
     state = AsyncValue.error(e, StackTrace.empty);
   } catch (e, st) {
@@ -136,8 +137,9 @@ String firebaseAuthErrorMessage(Object error) {
       case 'invalid-verification-id':
         return 'Invalid verification ID.';
       default:
-        // For any unhandled errors, show a friendly generic message
-        return 'Sign in failed. Please check your email and password.';
+        // Generic: this helper is shared by the sign-in, sign-up and
+        // password-reset paths, so it can't assume which one failed.
+        return 'Something went wrong. Please try again.';
     }
   }
   return 'An error occurred. Please try again.';

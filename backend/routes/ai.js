@@ -8,7 +8,17 @@ const router = express.Router();
 // GOOGLE GEMINI CLIENT
 // ═══════════════════════════════════════════════════════════════════════════
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+// responseMimeType makes Gemini emit bare JSON, so parseJSON() below is only a
+// fallback rather than the primary path.
+const model = genAI.getGenerativeModel({
+  model: 'gemini-2.5-flash-lite',
+  generationConfig: { responseMimeType: 'application/json' },
+});
+
+// Caps on caller-supplied input that gets interpolated into a prompt.
+const MAX_SEARCH_PLACES = 200;
+const MAX_QUERY_CHARS = 500;
+const MAX_NOTES_CHARS = 5000;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GOOGLE CLOUD VISION CLIENT (optional, for advanced image analysis)
@@ -97,7 +107,7 @@ Category: ${category}
 Location: ${address}
 
 Raw notes:
-${notes}
+${notes.slice(0, MAX_NOTES_CHARS)}
 
 Create a structured summary following the JSON format specified.`;
 
@@ -222,11 +232,16 @@ router.post('/smart-search', async (req, res) => {
     const { query, places } = req.body;
 
     if (!query || !places || !Array.isArray(places)) {
-      return res.status(400).json({ 
-        error: 'Bad Request', 
-        message: 'query and places array are required' 
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'query and places array are required'
       });
     }
+
+    // Bound what goes into the prompt — the JSON body limit alone would allow a
+    // caller to send tens of thousands of places.
+    const scopedQuery = String(query).slice(0, MAX_QUERY_CHARS);
+    const scopedPlaces = places.slice(0, MAX_SEARCH_PLACES);
 
     const prompt = `You are a smart search assistant for a places app.
 Given a natural language query and a list of places, identify which places best match the user's intent.
@@ -239,17 +254,17 @@ Return ONLY valid JSON in this format (no other text, no markdown):
 
 If no places match, return empty array with explanation.
 
-User query: "${query}"
+User query: "${scopedQuery}"
 
 Available places:
-${places.map(p => `ID: ${p.id} | Title: ${p.title} | Category: ${p.category} | Tags: ${p.tags?.join(', ') || 'none'} | Notes: ${p.notes?.substring(0, 100) || 'none'}`).join('\n')}
+${scopedPlaces.map(p => `ID: ${p.id} | Title: ${p.title} | Category: ${p.category} | Tags: ${p.tags?.join(', ') || 'none'} | Notes: ${p.notes?.substring(0, 100) || 'none'}`).join('\n')}
 
 Which places match the query?`;
 
     const response = await callGemini(prompt);
     const result = parseJSON(response);
 
-    console.log(`✅ Smart search for user ${req.user.uid}: "${query}" (${result.matchingIds?.length || 0} matches)`);
+    console.log(`✅ Smart search for user ${req.user.uid}: "${scopedQuery}" (${result.matchingIds?.length || 0} matches)`);
 
     res.json(result);
   } catch (error) {
