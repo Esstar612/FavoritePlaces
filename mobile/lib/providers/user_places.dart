@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:favorite_places/models/place.dart';
@@ -17,15 +17,19 @@ class UserPlacesNotifier extends StateNotifier<List<Place>> {
   StreamSubscription<List<Map<String, dynamic>>>? _sub;
 
   /// Call this once after the user is authenticated to start listening.
+  ///
+  /// Idempotent: AuthGate calls this from build() to cover cold start, so
+  /// re-subscribing here would tear down and recreate the snapshot listener on
+  /// every rebuild (extra reads, and the list visibly flashes).
   void startListening() {
-    _sub?.cancel();
+    if (_sub != null) return;
     _sub = FirestoreService.streamPlaces().listen(
       (docs) {
         state = docs.map(Place.fromFirestore).toList();
       },
       onError: (e) {
         // Stream errored — leave state as-is; UI can show stale data
-        print('Firestore stream error: $e');
+        debugPrint('Firestore stream error: $e');
       },
     );
   }

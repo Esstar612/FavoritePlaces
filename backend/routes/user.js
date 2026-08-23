@@ -4,6 +4,10 @@ import admin from 'firebase-admin';
 const router = express.Router();
 const db = admin.firestore();
 
+// Upper bound on how many place documents a single stats/export request will
+// read.  Without this each call is an unbounded collection scan.
+const MAX_PLACES_SCAN = 1000;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // USER PROFILE & SETTINGS ROUTES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -78,7 +82,9 @@ router.put('/profile', async (req, res) => {
     if (displayName !== undefined) updates.displayName = displayName;
     if (photoURL !== undefined) updates.photoURL = photoURL;
 
-    await db.collection('users').doc(userId).update(updates);
+    // merge:true so a user who has never had a profile document created still
+    // gets one — update() would throw NOT_FOUND instead.
+    await db.collection('users').doc(userId).set(updates, { merge: true });
 
     console.log(`✅ Profile updated for user ${userId}`);
     res.json({ success: true, updates });
@@ -134,10 +140,6 @@ router.put('/settings', async (req, res) => {
     const userId = req.user.uid;
     const { defaultRadius, theme, emailNotifications, pushNotifications, dataSharing } = req.body;
 
-    const updates = {
-      updatedAt: new Date().toISOString(),
-    };
-
     // Build settings object with only provided fields
     const settingsUpdate = {};
     if (defaultRadius !== undefined) settingsUpdate.defaultRadius = parseInt(defaultRadius);
@@ -146,12 +148,16 @@ router.put('/settings', async (req, res) => {
     if (pushNotifications !== undefined) settingsUpdate.pushNotifications = pushNotifications;
     if (dataSharing !== undefined) settingsUpdate.dataSharing = dataSharing;
 
-    // Update nested settings fields
-    Object.keys(settingsUpdate).forEach(key => {
-      updates[`settings.${key}`] = settingsUpdate[key];
-    });
+    // merge:true creates the document when it doesn't exist yet (update() throws
+    // NOT_FOUND).  Note this needs a real nested object, not dotted `settings.x`
+    // keys — those are an update()-only syntax.  Firestore merges nested maps
+    // field-by-field, so settings the client didn't send survive.
+    const updates = {
+      settings: settingsUpdate,
+      updatedAt: new Date().toISOString(),
+    };
 
-    await db.collection('users').doc(userId).update(updates);
+    await db.collection('users').doc(userId).set(updates, { merge: true });
 
     console.log(`✅ Settings updated for user ${userId}`);
     res.json({ success: true, settings: settingsUpdate });
@@ -177,11 +183,13 @@ router.get('/stats', async (req, res) => {
     // Query all places for this user
     const placesSnapshot = await db.collection('places')
       .where('userId', '==', userId)
+      .limit(MAX_PLACES_SCAN)
       .get();
 
     const places = placesSnapshot.docs.map(doc => doc.data());
 
     const stats = {
+      truncated: places.length === MAX_PLACES_SCAN,
       totalPlaces: places.length,
       favoriteCount: places.filter(p => p.isFavorite).length,
       categoriesUsed: new Set(places.map(p => p.category)).size,
@@ -225,8 +233,9 @@ router.post('/export', async (req, res) => {
     // Get all places
     const placesSnapshot = await db.collection('places')
       .where('userId', '==', userId)
+      .limit(MAX_PLACES_SCAN)
       .get();
-    
+
     const places = placesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -243,6 +252,7 @@ router.post('/export', async (req, res) => {
       places,
       metadata: {
         totalPlaces: places.length,
+        truncated: places.length === MAX_PLACES_SCAN,
         dataSize: JSON.stringify(places).length,
       }
     };
@@ -278,14 +288,25 @@ router.delete('/account', async (req, res) => {
       });
     }
 
-    // Delete all places
-    const placesSnapshot = await db.collection('places')
-      .where('userId', '==', userId)
-      .get();
-    
-    const batch = db.batch();
-    placesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
+    // Delete all places.  A Firestore batch caps at 500 writes, so page through
+    // the collection in chunks rather than building one oversized batch.
+    const BATCH_LIMIT = 500;
+    let deleted = 0;
+    for (;;) {
+      const placesSnapshot = await db.collection('places')
+        .where('userId', '==', userId)
+        .limit(BATCH_LIMIT)
+        .get();
+
+      if (placesSnapshot.empty) break;
+
+      const batch = db.batch();
+      placesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      deleted += placesSnapshot.size;
+
+      if (placesSnapshot.size < BATCH_LIMIT) break;
+    }
 
     // Delete user profile
     await db.collection('users').doc(userId).delete();
@@ -293,7 +314,7 @@ router.delete('/account', async (req, res) => {
     // Delete Firebase Auth account
     await admin.auth().deleteUser(userId);
 
-    console.log(`✅ Account deleted for user ${userId}`);
+    console.log(`✅ Account deleted for user ${userId} (${deleted} places)`);
     
     res.json({ 
       success: true, 
