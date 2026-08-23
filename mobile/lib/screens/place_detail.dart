@@ -1,9 +1,9 @@
-import 'package:favorite_places/config.dart';
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/screens/map.dart';
 import 'package:favorite_places/services/ai_service.dart';
+import 'package:favorite_places/utils/static_map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -86,13 +86,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   }
 
   // ── static map URL ───────────────────────────────────────────────────────
-  String _mapUrl(Place p) {
-    final lat = p.location.latitude, lng = p.location.longitude;
-    return 'https://maps.googleapis.com/maps/api/staticmap'
-        '?center=$lat,$lng&zoom=16&size=600x300&maptype=roadmap'
-        '&markers=color:red%7Clabel:A%7C$lat,$lng'
-        '&key=${AppConfig.googleMapsApiKey}';
-  }
+  String _mapUrl(Place p) => staticMapUrlFor(p.location);
 
   @override
   Widget build(BuildContext context) {
@@ -366,9 +360,14 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     if (p.images.isNotEmpty) {
       return Image.file(p.images.first, fit: BoxFit.cover);
     }
-    return Container(
-      color: Colors.grey.shade800,
-      child: const Center(child: Icon(Icons.landscape, size: 80, color: Colors.grey)),
+    // No photo — the map of where it is beats an empty grey header.
+    return Image.network(
+      staticMapUrlFor(p.location, width: 640, height: 640, zoom: 15),
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.grey.shade800,
+        child: const Center(child: Icon(Icons.landscape, size: 80, color: Colors.grey)),
+      ),
     );
   }
 

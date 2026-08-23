@@ -2,6 +2,7 @@ import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/screens/place_detail.dart';
+import 'package:favorite_places/utils/static_map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -369,11 +370,24 @@ class PlacesList extends ConsumerWidget {
         height: 180,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+        errorBuilder: (context, error, stackTrace) => _mapImage(place),
       );
     }
-    
-    return _buildPlaceholder();
+
+    return _mapImage(place);
+  }
+
+  /// No photo — show where the place is instead of a blank placeholder.
+  Widget _mapImage(Place place) {
+    return Image.network(
+      staticMapUrlFor(place.location, width: 600, height: 360, zoom: 15),
+      height: 180,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, progress) =>
+          progress == null ? child : _buildPlaceholder(),
+      errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+    );
   }
   
   Widget _buildPlaceholder() {
