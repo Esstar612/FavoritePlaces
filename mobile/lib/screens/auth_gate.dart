@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/providers/user_places.dart';
+import 'package:favorite_places/providers/user_settings.dart';
 import 'package:favorite_places/screens/auth/login.dart';
 import 'package:favorite_places/screens/places.dart';
 
 /// Root widget that watches the Firebase auth stream and:
 ///   • starts the Firestore places listener when a user signs in
-///   • stops it and clears state when they sign out
+///   • loads saved user settings so the chosen theme applies at launch
+///   • stops both and clears state when they sign out
 ///   • routes to LoginScreen or PlacesScreen accordingly
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -22,8 +24,12 @@ class AuthGate extends ConsumerWidget {
       next.whenOrNull(data: (user) {
         if (user != null) {
           ref.read(userPlacesProvider.notifier).startListening();
+          // Fire-and-forget: the theme swaps in when it arrives. load() is
+          // guarded against overlapping calls.
+          ref.read(userSettingsProvider.notifier).load();
         } else {
           ref.read(userPlacesProvider.notifier).stopListening();
+          ref.read(userSettingsProvider.notifier).reset();
         }
       });
     });
@@ -52,8 +58,10 @@ class AuthGate extends ConsumerWidget {
       data: (user) {
         if (user == null) return const LoginScreen();
 
-        // Ensure listener is running (handles cold-start where listen hasn't fired yet)
+        // Cold start: ref.listen above doesn't fire for the stream's initial
+        // value, so kick both off here too. Each is idempotent.
         ref.read(userPlacesProvider.notifier).startListening();
+        ref.read(userSettingsProvider.notifier).load();
         return const PlacesScreen();
       },
     );

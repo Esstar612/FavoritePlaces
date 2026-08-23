@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:favorite_places/config.dart';
 import 'package:favorite_places/providers/auth_provider.dart';
+import 'package:favorite_places/providers/user_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -18,103 +19,57 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
 
-  // Settings values
-  double _defaultRadius = 1000;
-  String _theme = 'dark';
-  bool _emailNotifications = true;
-  bool _pushNotifications = true;
-  bool _dataSharing = false;
-
   @override
   void initState() {
     super.initState();
     _loadSettings();
   }
 
+  /// Values normally arrive at sign-in; refresh on entry so the screen reflects
+  /// changes made on another device.
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+    final error = await ref.read(userSettingsProvider.notifier).load();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-      final token = await user.getIdToken();
-      final response = await http.get(
-        Uri.parse('${AppConfig.backendUrl}/user/settings'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
       );
+    }
+  }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            _defaultRadius = (data['defaultRadius'] ?? 1000).toDouble();
-            _theme = data['theme'] ?? 'dark';
-            _emailNotifications = data['emailNotifications'] ?? true;
-            _pushNotifications = data['pushNotifications'] ?? true;
-            _dataSharing = data['dataSharing'] ?? false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load settings: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+  /// Persist a change. The notifier applies it locally first, so the theme
+  /// switch takes effect immediately and rolls back if the write fails.
+  Future<void> _update(UserSettings next) async {
+    setState(() => _isSaving = true);
+    final error = await ref.read(userSettingsProvider.notifier).save(next);
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
     }
   }
 
   Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      final token = await user.getIdToken();
-      final response = await http.put(
-        Uri.parse('${AppConfig.backendUrl}/user/settings'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'defaultRadius': _defaultRadius.toInt(),
-          'theme': _theme,
-          'emailNotifications': _emailNotifications,
-          'pushNotifications': _pushNotifications,
-          'dataSharing': _dataSharing,
-        }),
-      );
-
-      if (response.statusCode == 200 && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Settings saved successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save settings: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+    await _update(ref.read(userSettingsProvider));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Settings saved successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(userSettingsProvider);
+
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Settings')),
@@ -151,18 +106,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.radar),
             title: const Text('Default Search Radius'),
-            subtitle: Text('${(_defaultRadius / 1000).toStringAsFixed(1)} km'),
+            subtitle: Text('${(settings.defaultRadius / 1000).toStringAsFixed(1)} km'),
             trailing: SizedBox(
               width: 200,
               child: Slider(
-                value: _defaultRadius,
+                value: settings.defaultRadius.toDouble(),
                 min: 500,
                 max: 10000,
                 divisions: 19,
-                label: '${(_defaultRadius / 1000).toStringAsFixed(1)} km',
-                onChanged: (value) {
-                  setState(() => _defaultRadius = value);
-                },
+                label: '${(settings.defaultRadius / 1000).toStringAsFixed(1)} km',
+                // Persist on release, not on every drag frame.
+                onChanged: (value) => ref
+                    .read(userSettingsProvider.notifier)
+                    .setLocal(settings.copyWith(defaultRadius: value.toInt())),
+                onChangeEnd: (value) =>
+                    _update(settings.copyWith(defaultRadius: value.toInt())),
               ),
             ),
           ),
@@ -175,12 +133,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.palette_outlined),
             title: const Text('Theme'),
-            subtitle: Text(_theme == 'dark' ? 'Dark Mode' : 'Light Mode'),
+            subtitle: Text(settings.theme == 'dark' ? 'Dark Mode' : 'Light Mode'),
             trailing: Switch(
-              value: _theme == 'dark',
-              onChanged: (value) {
-                setState(() => _theme = value ? 'dark' : 'light');
-              },
+              value: settings.theme == 'dark',
+              onChanged: (value) => _update(
+                settings.copyWith(theme: value ? 'dark' : 'light'),
+              ),
             ),
           ),
 
@@ -193,20 +151,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             secondary: const Icon(Icons.email_outlined),
             title: const Text('Email Notifications'),
             subtitle: const Text('Receive updates via email'),
-            value: _emailNotifications,
-            onChanged: (value) {
-              setState(() => _emailNotifications = value);
-            },
+            value: settings.emailNotifications,
+            onChanged: (value) =>
+                _update(settings.copyWith(emailNotifications: value)),
           ),
           
           SwitchListTile(
             secondary: const Icon(Icons.notifications_outlined),
             title: const Text('Push Notifications'),
             subtitle: const Text('Get notified about new features'),
-            value: _pushNotifications,
-            onChanged: (value) {
-              setState(() => _pushNotifications = value);
-            },
+            value: settings.pushNotifications,
+            onChanged: (value) =>
+                _update(settings.copyWith(pushNotifications: value)),
           ),
 
           const Divider(indent: 16, endIndent: 16),
@@ -218,10 +174,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             secondary: const Icon(Icons.analytics_outlined),
             title: const Text('Anonymous Usage Data'),
             subtitle: const Text('Help improve the app'),
-            value: _dataSharing,
-            onChanged: (value) {
-              setState(() => _dataSharing = value);
-            },
+            value: settings.dataSharing,
+            onChanged: (value) =>
+                _update(settings.copyWith(dataSharing: value)),
           ),
 
           ListTile(
