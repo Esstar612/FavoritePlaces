@@ -54,6 +54,7 @@
     "indexes": "firestore.indexes.json"
   },
   "storage": {
+    "bucket": "favorite-places-app-94adb.firebasestorage.app",
     "rules": "storage.rules"
   }
 }
