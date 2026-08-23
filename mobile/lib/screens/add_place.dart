@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
+import 'package:favorite_places/services/ai_service.dart';
 import 'package:favorite_places/widgets/image_input.dart';
 import 'package:favorite_places/widgets/location_input.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
   int             _rating          = 0;
   DateTime        _visitDate       = DateTime.now();
   bool            _isSaving        = false;
+  bool            _isSuggesting    = false;
 
   // ── tag suggestions ──────────────────────────────────────────────────────
   static const _suggestedTags = [
@@ -72,6 +74,51 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
   }
 
   void _removeTag(String tag) => setState(() { _tags.remove(tag); });
+
+  // ── AI tag suggestions ───────────────────────────────────────────────────
+  /// Asks the backend for tags based on the title, category and — when the
+  /// place already has an uploaded photo — the image itself. A freshly picked
+  /// photo has no URL yet, so those requests are text-only.
+  Future<void> _suggestTags() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a place name first')),
+      );
+      return;
+    }
+
+    setState(() => _isSuggesting = true);
+    try {
+      final suggestions = await AIService().suggestTags(
+        title:    title,
+        category: _selectedCategory.name,
+        photoUrl: _existingUrls.isNotEmpty ? _existingUrls.first : null,
+      );
+      if (!mounted) return;
+
+      final added = suggestions.where((t) => !_tags.contains(t)).toList();
+      setState(() {
+        _tags.addAll(added);
+        _isSuggesting = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(added.isEmpty
+              ? 'No new tags to add'
+              : 'Added ${added.length} suggested tag${added.length == 1 ? '' : 's'}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSuggesting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tag suggestions unavailable right now.')),
+      );
+    }
+  }
 
   // ── does the user have at least one photo (new or existing)? ────────────
   bool get _hasPhoto => _newImages.isNotEmpty || _existingUrls.isNotEmpty;
@@ -234,7 +281,22 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
             const SizedBox(height: 16),
 
             // ── Tags ───────────────────────────────────────────────────────
-            Text('Tags', style: Theme.of(context).textTheme.titleMedium),
+            Row(
+              children: [
+                Text('Tags', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _isSuggesting ? null : _suggestTags,
+                  icon: _isSuggesting
+                      ? const SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 18),
+                  label: Text(_isSuggesting ? 'Thinking…' : 'Suggest'),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8, runSpacing: 8,

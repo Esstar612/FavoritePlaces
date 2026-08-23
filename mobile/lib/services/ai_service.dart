@@ -68,10 +68,13 @@ class AIService {
   }
 
   // ─── POST /ai/suggest-tags ────────────────────────────────────────────────
-  /// Sends a photoUrl (already uploaded to Firebase Storage);
-  /// backend returns a list of suggested tag strings.
+  /// Returns suggested tags for a place.
+  ///
+  /// [photoUrl] is optional — a place being created hasn't uploaded its photo
+  /// yet, and the backend falls back to title + category in that case. When a
+  /// URL is supplied the backend also runs Cloud Vision over the image.
   Future<List<String>> suggestTags({
-    required String photoUrl,
+    String? photoUrl,
     required String title,
     required String category,
   }) async {
@@ -82,7 +85,7 @@ class AIService {
       url,
       headers: headers,
       body: jsonEncode({
-        'photoUrl': photoUrl,
+        if (photoUrl != null) 'photoUrl': photoUrl,
         'title': title,
         'category': category,
       }),
@@ -93,6 +96,9 @@ class AIService {
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (body['tags'] as List).map((t) => t as String).toList();
+    return ((body['tags'] as List?) ?? const [])
+        .map((t) => t.toString())
+        .where((t) => t.trim().isNotEmpty)
+        .toList();
   }
 }

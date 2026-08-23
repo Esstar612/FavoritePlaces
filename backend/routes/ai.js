@@ -139,17 +139,20 @@ router.post('/suggest-tags', async (req, res) => {
   try {
     const { photoUrl, title, category } = req.body;
 
-    if (!photoUrl) {
-      return res.status(400).json({ 
-        error: 'Bad Request', 
-        message: 'photoUrl is required' 
+    // photoUrl is optional: when a place is still being created its photo has
+    // not been uploaded yet, so there is no URL to analyse.  Gemini can still
+    // suggest useful tags from the title and category alone.
+    if (!photoUrl && !title && !category) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Provide at least one of photoUrl, title or category'
       });
     }
 
     let imageDescription = '';
 
-    // Try Google Cloud Vision first (if available)
-    if (visionClient) {
+    // Try Google Cloud Vision first (only possible with an uploaded photo)
+    if (visionClient && photoUrl) {
       try {
         const [result] = await visionClient.annotateImage({
           image: { source: { imageUri: photoUrl } },
