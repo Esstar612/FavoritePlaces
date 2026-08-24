@@ -1,12 +1,9 @@
-import 'dart:convert';
-
-import 'package:favorite_places/config.dart';
+import 'package:favorite_places/services/ai_service.dart';
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/screens/map.dart';
 import 'package:favorite_places/utils/static_map.dart';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
-import 'package:http/http.dart' as http;
 
 class LocationInput extends StatefulWidget {
   const LocationInput({
@@ -119,20 +116,14 @@ class _LocationInputState extends State<LocationInput> {
 
   Future<void> _savePlace(double latitude, double longitude) async {
     try {
-      // Use API key from config file for geocoding
-      final url = Uri.parse(
-        'https://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&key=${AppConfig.googleMapsApiKey}',
+      // Runs through the backend — see AIService.reverseGeocode.
+      final resolved = await AIService().reverseGeocode(
+        latitude: latitude,
+        longitude: longitude,
       );
-      
-      final response = await http.get(url);
-      final resData = json.decode(response.body);
-      
-      String address;
-      if (resData['results'] != null && resData['results'].isNotEmpty) {
-        address = resData['results'][0]['formatted_address'];
-      } else {
-        address = 'Lat: ${latitude.toStringAsFixed(4)}, Lng: ${longitude.toStringAsFixed(4)}';
-      }
+
+      final address = resolved ??
+          'Lat: ${latitude.toStringAsFixed(4)}, Lng: ${longitude.toStringAsFixed(4)}';
 
       setState(() {
         _pickedLocation = PlaceLocation(

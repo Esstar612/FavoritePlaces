@@ -51,6 +51,7 @@ app.set('trust proxy', 1);
 // because they use admin.firestore() and admin.auth()
 const { default: aiRoutes } = await import('./routes/ai.js');
 const { default: userRoutes } = await import('./routes/user.js');
+const { default: mapsRoutes } = await import('./routes/maps.js');
 
 // ───────────────────────────────────────────────────────────────────────────
 // Middleware
@@ -95,6 +96,7 @@ const userLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/user/', userLimiter);
+app.use('/maps/', userLimiter);
 
 // ───────────────────────────────────────────────────────────────────────────
 // Authentication Middleware
@@ -157,6 +159,7 @@ app.get('/health', (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────
 app.use('/ai', authenticateUser, aiRoutes);
 app.use('/user', authenticateUser, userRoutes);
+app.use('/maps', authenticateUser, mapsRoutes);
 
 // ───────────────────────────────────────────────────────────────────────────
 // 404 handler

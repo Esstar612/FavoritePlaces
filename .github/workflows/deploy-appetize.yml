@@ -31,11 +31,22 @@ jobs:
       - name: 🔧 Create config.dart
         env:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          GOOGLE_MAPS_API_KEY_WEB: ${{ secrets.GOOGLE_MAPS_API_KEY_WEB }}
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
         run: |
           cat > mobile/lib/config.dart <<EOF
+          import 'package:flutter/foundation.dart' show kIsWeb;
+
           class AppConfig {
-            static const String googleMapsApiKey = '$GOOGLE_MAPS_API_KEY';
+            // Web is referrer-restricted to the hosting domain; mobile REST
+            // calls carry no restrictable identity so that key is limited by
+            // API and quota. Neither can geocode — the backend does that.
+            static const String _webMapsKey = '$GOOGLE_MAPS_API_KEY_WEB';
+            static const String _mobileMapsKey = '$GOOGLE_MAPS_API_KEY';
+
+            static String get googleMapsApiKey =>
+                kIsWeb ? _webMapsKey : _mobileMapsKey;
+
             static const String backendUrl = '$BACKEND_URL';
 
             static const String appName = 'Favorite Places';

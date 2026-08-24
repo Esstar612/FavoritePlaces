@@ -8,8 +8,10 @@
         android:label="Favorite Places"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Android-restricted key: usable only by this package signed with the
+             registered SHA-1, and only for the Maps SDK. Safe to commit. -->
         <meta-data android:name="com.google.android.geo.API_KEY"
-               android:value="AIzaSyBG_kktz0BzpTbQtv6fw25RQ9Df1xfLSa0"/>
+               android:value="AIzaSyBtLUwlIevCdNEVdAiNg73vDojFXuiqEoc"/>
         
         <activity
             android:name=".MainActivity"

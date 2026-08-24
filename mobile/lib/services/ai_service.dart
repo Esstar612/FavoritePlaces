@@ -145,4 +145,30 @@ class AIService {
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }
+
+  // ─── GET /maps/reverse-geocode ────────────────────────────────────────────
+  /// Turn coordinates into a human-readable address.
+  ///
+  /// Runs server-side because the Geocoding web service rejects HTTP-referrer
+  /// restricted keys, so the web build cannot call it directly without
+  /// shipping a second, unrestricted key. Returns null when no address is
+  /// available — callers fall back to showing the coordinates.
+  Future<String?> reverseGeocode({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final url = Uri.parse(
+      '${AppConfig.backendUrl}/maps/reverse-geocode?lat=$latitude&lng=$longitude',
+    );
+    final headers = await _authHeaders();
+
+    final response = await http.get(url, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Reverse geocode failed: ${response.statusCode}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final address = body['address'];
+    return address is String && address.isNotEmpty ? address : null;
+  }
 }
