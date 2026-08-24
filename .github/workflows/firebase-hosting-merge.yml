@@ -1,0 +1,60 @@
+name: Deploy web to Firebase Hosting
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/firebase-hosting-merge.yml'
+
+jobs:
+  build_and_deploy:
+    name: Build Flutter web and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.9'
+          channel: 'stable'
+          cache: true
+
+      # config.dart is gitignored, so CI has to write it. No dart:io import —
+      # that would break the web build, where dart:io is unavailable.
+      - name: 🔧 Create config.dart
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          cat > mobile/lib/config.dart <<EOF
+          class AppConfig {
+            static const String googleMapsApiKey = '$GOOGLE_MAPS_API_KEY';
+            static const String backendUrl = '$BACKEND_URL';
+
+            static const String appName = 'Favorite Places';
+            static const String placesCollection = 'places';
+            static const String usersCollection = 'users';
+          }
+          EOF
+
+      - name: 📦 Install dependencies
+        run: cd mobile && flutter pub get
+
+      # Catches a broken build before it reaches the live demo URL.
+      - name: 🔍 Analyze
+        run: cd mobile && flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: 🔨 Build web
+        run: cd mobile && flutter build web --release
+
+      - name: 🚀 Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FAVORITE_PLACES_APP_94ADB }}
+          channelId: live
+          projectId: favorite-places-app-94adb
