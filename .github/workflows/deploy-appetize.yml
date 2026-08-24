@@ -64,6 +64,9 @@ jobs:
           cd mobile
           flutter pub get
       
+      - name: 🧪 Test
+        run: cd mobile && flutter test
+
       - name: 🔨 Build APK
         run: |
           cd mobile
