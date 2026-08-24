@@ -1,410 +1,362 @@
 # 🗺️ Favorite Places
 
-A full-stack Flutter mobile application for saving and organizing your favorite locations with AI-powered features using Google Gemini.
+A full-stack app for saving and organising the places you actually want to remember — with AI that summarises your notes, suggests tags, and answers questions like *"somewhere quiet to work"*.
 
-![Flutter](https://img.shields.io/badge/Flutter-3.27-02569B?style=flat-square&logo=flutter)
-![Dart](https://img.shields.io/badge/Dart-3.6-0175C2?style=flat-square&logo=dart)
-![Firebase](https://img.shields.io/badge/Firebase-Latest-FFCA28?style=flat-square&logo=firebase)
+Flutter on Android and the web, an Express API on Cloud Run, Firebase for auth/data/storage, and Google Gemini for the AI.
+
+![Flutter](https://img.shields.io/badge/Flutter-3.38-02569B?style=flat-square&logo=flutter)
+![Dart](https://img.shields.io/badge/Dart-3.10-0175C2?style=flat-square&logo=dart)
+![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore%20%7C%20Storage-FFCA28?style=flat-square&logo=firebase)
 ![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
 ![Cloud Run](https://img.shields.io/badge/Deployed-Cloud%20Run-4285F4?style=flat-square&logo=google-cloud)
-![Gemini AI](https://img.shields.io/badge/AI-Gemini%202.5-8E75B2?style=flat-square&logo=google)
+![Gemini AI](https://img.shields.io/badge/AI-Gemini%202.5%20Flash%20Lite-8E75B2?style=flat-square&logo=google)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
 ---
 
-## 🎮 Try It Live On Appetize
+## 🎮 Try it live
 
-**[🚀 Launch App in Browser →](https://appetize.io/app/b_3ngeiuwtjjg7qmxhieybnpzq4u)**
+### **[→ favorite-places-app-94adb.web.app](https://favorite-places-app-94adb.web.app)**
 
-*No download required! Runs in a simulated Android device via Appetize.io*
+Hit **Continue as guest** — no sign-up, no email. You get your own private sandbox
+pre-loaded with five sample places, and nothing you do there is visible to anyone else.
 
-> **Note:** "Get current location" feature has limited functionality in the simulator due to GPS constraints. Use "Select on Map" to test location features.
+Worth trying once you're in:
+
+| | |
+|---|---|
+| ✨ **Ask AI** in the search bar | try `art` — plain search matches *T-**art**-ine Bakery*; the AI returns SFMOMA |
+| ✨ **Suggest** on the Tags field | generates tags from the place name, or from the photo if there is one |
+| **Generate Smart Summary** on a place | turns freeform notes into why you liked it, tips, and best time to go |
+| **Add Place → Select on Map** | live place search, and it opens where you are |
+
+There's also an Android build on
+**[Appetize](https://appetize.io/app/b_3ngeiuwtjjg7qmxhieybnpzq4u)**, but the web
+version is the better demo: Appetize's free tier caps sessions at 3 minutes and
+one viewer at a time, and its emulated device can't run the Google Maps SDK, so
+"Select on Map" fails there.
 
 ---
 
 ## ✨ Features
 
-### 📱 Core Functionality
-- **Photo Management** - Upload and store multiple photos per place using Firebase Storage
-- **Location Integration** - Interactive Google Maps picker with address geocoding
-- **Favorites System** - Mark and filter your favorite places
-- **Custom Categories** - Park, Restaurant, Entertainment, Shopping, Travel, and more
-- **Rich Notes & Ratings** - Add detailed notes and 5-star ratings for each place
-- **Advanced Search** - Filter by category, favorites, and search by name or location
+### Core
+- **Places with photos, notes, ratings, tags and categories** — stored in Firestore, synced live
+- **Map picker with place search** — Google Places autocomplete, opens on your location
+- **Photos optional** — a place with no photo shows a map of where it is instead of a grey placeholder
+- **Search, filter and sort** — by text, category, favourites, name, rating or date
+- **Favourites**, pull-to-refresh, and a stats view
 
-### 🤖 AI-Powered Features
-- **Smart Tag Suggestions** - Google Gemini AI analyzes photos and context to suggest relevant tags
-- **Intelligent Summaries** - AI-powered note summarization with tips and best times to visit
-- **Natural Language Processing** - Smart search across all place data
+### AI (Google Gemini)
+- **Smart Summary** — turns raw notes into *why I liked it / tips / best time to go*, cached so revisiting doesn't re-run the model
+- **Tag suggestions** — from the place name and category, plus Cloud Vision image analysis when a photo exists
+- **Natural-language search** — "somewhere quiet to work" matches on meaning, not substrings
 
-### 👤 User Experience
-- **Secure Authentication** - Email/Password and Google Sign-In via Firebase Auth
-- **Real-time Sync** - Cloud Firestore database with instant updates across devices
-- **Modern UI/UX** - Material Design 3 with smooth animations and intuitive navigation
-- **Dark Mode Support** - Beautiful interface that adapts to system preferences
-- **Statistics Dashboard** - Track total places, favorites, and category distribution
-- **Profile Management** - Customize your profile and view your travel history
+### Accounts
+- **Email/password, Google Sign-In, or guest** — guests get an isolated sandbox that's deleted on sign-out
+- **Light and dark themes**, persisted per account
+- **Export your data** as JSON, or delete your account and everything in it
 
 ---
 
 ## 📸 Screenshots
 
 <div align="center">
-  <img src="screenshots/places-list.png" width="250" alt="Places List"/>
-  <img src="screenshots/add-place.png" width="250" alt="Add Place"/>
-  <img src="screenshots/add-location.png" width="250" alt="Add Info"/>
+  <img src="screenshots/places-list.png" width="250" alt="Places list"/>
+  <img src="screenshots/add-place.png" width="250" alt="Add a place"/>
+  <img src="screenshots/add-location.png" width="250" alt="Location picker"/>
 </div>
 
 <div align="center">
-  <img src="screenshots/place-detail.png" width="250" alt="Place Detail"/>
-  <img src="screenshots/place-det-ai.png" width="250" alt="AI Features"/>
-  <img src="screenshots/map-view.png" width="250" alt="Map View"/>
+  <img src="screenshots/place-detail.png" width="250" alt="Place detail"/>
+  <img src="screenshots/place-det-ai.png" width="250" alt="AI summary"/>
+  <img src="screenshots/map-view.png" width="250" alt="Map view"/>
 </div>
-
-*Screenshots coming soon - app is live on Appetize!*
 
 ---
 
 ## 🏗️ Architecture
 
-### Frontend (Mobile App)
-- **Framework:** Flutter 3.27+ with Dart 3.6+
-- **State Management:** Riverpod for reactive, scalable state
-- **Authentication:** Firebase Auth with multi-provider support
-- **Database:** Cloud Firestore for real-time data sync
-- **Storage:** Firebase Storage for photo uploads
-- **Maps:** Google Maps Flutter with geocoding
-- **UI:** Material Design 3 with custom theming
+**Mobile & web** — Flutter 3.38 / Dart 3.10, Riverpod for state, Firebase Auth,
+Cloud Firestore (live snapshot listeners), Firebase Storage, Google Maps, Material 3.
+One codebase ships to Android and the browser.
 
-### Backend (REST API)
-- **Runtime:** Node.js 20 (Alpine Linux)
-- **Framework:** Express.js with async/await
-- **AI Integration:** Google Gemini 2.5 Flash Lite (generous free tier)
-- **Authentication:** Firebase Admin SDK for token verification
-- **Deployment:** Google Cloud Run (serverless, auto-scaling)
-- **Security:** Helmet, CORS, rate limiting, input validation
+**Backend** — Node.js 20 on Express, deployed to Cloud Run as a distroless-ish Alpine
+container. Verifies Firebase ID tokens on every protected route, rate-limits per IP,
+and holds the Gemini and Geocoding keys server-side so clients never see them.
 
-### Infrastructure
-- **Hosting:** Firebase Hosting with GitHub Actions CI/CD
-- **Backend:** Google Cloud Run with auto-deploy from GitHub
-- **Secrets:** Google Secret Manager for API keys and credentials
-- **APIs:** Google Maps API, Google Gemini AI API
-- **Monitoring:** Cloud Run metrics and Firebase Analytics
+**Infrastructure** — GitHub Actions builds and deploys the web app to Firebase Hosting
+and the APK to Appetize on every push to `main`. Firestore and Storage security rules
+are versioned in this repo and deployed with the Firebase CLI.
+
+### Why the backend exists
+
+It isn't just an AI proxy. It also holds keys that shouldn't ship to a client:
+Gemini, and the Geocoding key — the Geocoding API rejects HTTP-referrer-restricted
+keys outright, so a browser can't call it safely without exposing an unrestricted one.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech stack
 
 | Layer | Technologies |
 |-------|-------------|
-| **Mobile** | Flutter, Dart, Riverpod, Firebase SDK |
-| **Backend** | Node.js, Express, Firebase Admin |
-| **AI** | Google Gemini 2.5 Flash Lite |
-| **Database** | Cloud Firestore (NoSQL) |
+| **Client** | Flutter, Dart, Riverpod, Material 3 |
+| **Backend** | Node.js, Express, Firebase Admin SDK |
+| **AI** | Google Gemini 2.5 Flash Lite, Cloud Vision (optional) |
+| **Database** | Cloud Firestore |
 | **Storage** | Firebase Storage |
-| **Auth** | Firebase Authentication |
-| **Cloud** | Google Cloud Run, Secret Manager |
+| **Auth** | Firebase Authentication (email, Google, anonymous) |
+| **Maps** | Maps SDK for Android, Maps JavaScript, Static Maps, Places API (New), Geocoding |
+| **Cloud** | Cloud Run, Firebase Hosting, Secret Manager |
 | **CI/CD** | GitHub Actions |
-| **Maps** | Google Maps Platform |
-| **Deployment** | Docker, Appetize.io |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting started
 
 ### Prerequisites
-- Flutter 3.27+ ([Install Flutter](https://docs.flutter.dev/get-started/install))
-- Node.js 18+ ([Install Node.js](https://nodejs.org/))
-- Firebase project ([Create Firebase Project](https://console.firebase.google.com/))
-- Google Cloud account ([Google Cloud Console](https://console.cloud.google.com/))
-- Google Gemini API key ([Get API Key](https://aistudio.google.com/app/apikey) - FREE)
+
+- Flutter 3.38+ · Node.js 20+
+- A Firebase project, and a Google Cloud project with the Maps APIs enabled
+- A [Gemini API key](https://aistudio.google.com/app/apikey) (free tier)
 
 ---
 
-### Backend Setup
+### Backend
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Esstar612/FavoritePlaces.git
-   cd FavoritePlaces/backend
-   ```
+```bash
+git clone https://github.com/Esstar612/FavoritePlaces.git
+cd FavoritePlaces/backend
+npm install
+cp .env.example .env
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+Fill in `.env` — every variable in the example is one the server actually reads:
 
-3. **Configure environment**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit `.env` and add:
-   ```env
-   # Google Gemini AI (FREE - https://aistudio.google.com/app/apikey)
-   GEMINI_API_KEY=your_gemini_api_key_here
-   
-   # Firebase Admin SDK
-   FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccountKey.json
-   
-   # Server Configuration
-   PORT=8080
-   NODE_ENV=development
-   CORS_ORIGIN=*
-   ```
+```env
+GEMINI_API_KEY=...                              # required, all /ai routes
+GOOGLE_MAPS_SERVER_KEY=...                      # required, /maps/reverse-geocode
+FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccountKey.json
+CORS_ORIGIN=https://your-app.web.app
+```
 
-4. **Add Firebase Service Account**
-   - Go to [Firebase Console](https://console.firebase.google.com/)
-   - Project Settings → Service Accounts → Generate New Private Key
-   - Save as `serviceAccountKey.json` in backend folder
+Download a service account key (Firebase Console → Project Settings → Service
+Accounts → Generate new private key) and save it as `backend/serviceAccountKey.json`.
+Both that file and `.env` are gitignored, and a `.dockerignore` keeps them out of
+any image you build.
 
-5. **Run locally**
-   ```bash
-   npm run dev
-   ```
-   
-   Backend will be running at `http://localhost:8080`
+```bash
+npm run dev     # http://localhost:8080
+```
 
-6. **Deploy to Cloud Run**
-   ```bash
-   # Build and deploy
-   gcloud builds submit --tag gcr.io/YOUR-PROJECT-ID/favorite-places-backend
-   gcloud run deploy favorite-places-backend \
-     --image gcr.io/YOUR-PROJECT-ID/favorite-places-backend \
-     --region us-central1 \
-     --allow-unauthenticated
-   ```
+Deploy:
+
+```bash
+gcloud run deploy favorite-places-backend --source . \
+  --region us-central1 --platform managed \
+  --update-env-vars GOOGLE_MAPS_SERVER_KEY=...
+```
+
+On Cloud Run, pass the service account JSON as `FIREBASE_SERVICE_ACCOUNT_JSON`
+(the whole document as one string) instead of a file path.
 
 ---
 
-### Mobile App Setup
+### Mobile & web app
 
-1. **Navigate to mobile directory**
-   ```bash
-   cd mobile
-   ```
+```bash
+cd mobile
+flutter pub get
+cp lib/config.example.dart lib/config.dart
+```
 
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
+Fill in `lib/config.dart` (gitignored). It takes **two** Maps keys, and
+`AndroidManifest.xml` takes a third — see [API keys](#-api-keys) below for why.
 
-3. **Configure API keys**
-   ```bash
-   cp lib/config.example.dart lib/config.dart
-   ```
-   
-   Edit `lib/config.dart`:
-   ```dart
-   class AppConfig {
-     static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
-     static const String backendUrl = 'YOUR_CLOUD_RUN_URL';
-   }
-   ```
+Add your Firebase config:
 
-4. **Add Firebase configuration**
-   
-   **For Android:**
-   - Download `google-services.json` from Firebase Console
-   - Place in `android/app/google-services.json`
-   
-   **For iOS:**
-   - Download `GoogleService-Info.plist` from Firebase Console
-   - Place in `ios/Runner/GoogleService-Info.plist`
+- **Android** — `google-services.json` → `android/app/`
+- **iOS** — `GoogleService-Info.plist` → `ios/Runner/`
+- **Web** — the web config lives in `lib/firebase_options_web.dart`, which is
+  committed on purpose: a Firebase web config is public by design and is enforced
+  by security rules, not secrecy
 
-5. **Set up Google Maps**
-   
-   **Android** (`android/app/src/main/AndroidManifest.xml`):
-   ```xml
-   <meta-data
-       android:name="com.google.android.geo.API_KEY"
-       android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
-   ```
-   
-   **iOS** (`ios/Runner/AppDelegate.swift`):
-   ```swift
-   GMSServices.provideAPIKey("YOUR_GOOGLE_MAPS_API_KEY")
-   ```
+Then:
 
-6. **Run the app**
-   ```bash
-   flutter run
-   ```
+```bash
+flutter run              # Android / iOS
+flutter run -d chrome    # web
+flutter test             # 25 unit tests
+```
+
+Deploy the security rules before using it against a real project:
+
+```bash
+firebase deploy --only firestore:rules,storage:rules,firestore:indexes
+```
 
 ---
 
-## 📦 Project Structure
+## 🔑 API keys
+
+A Google API key can only carry **one** application restriction, and this app calls
+Maps from four different places with different identities. So it uses four keys,
+each scoped to one job:
+
+| Key | Restriction | Lives in |
+|-----|-------------|----------|
+| **Android** | package name + SHA-1, Maps SDK only | `AndroidManifest.xml` — committed, and safe to: it's useless without the signing certificate |
+| **Web** | HTTP referrer → your hosting domain | `config.dart` (gitignored) |
+| **Mobile REST** | API-restricted only | `config.dart` (gitignored) |
+| **Server** | Geocoding only | backend env var — never ships to a client |
+
+The mobile REST key is the one that can't be locked to an application: REST calls
+from a phone carry no package identity or referrer for a key to be restricted
+against. It's limited by API, and worth a quota cap.
+
+---
+
+## 📦 Project structure
 
 ```
 FavoritePlaces/
-├── backend/                     # Node.js Express API
+├── backend/
 │   ├── routes/
-│   │   ├── ai.js               # AI endpoints (Gemini)
-│   │   └── user.js             # User management
-│   ├── server.js               # Main server file
-│   ├── package.json            # Dependencies
-│   ├── Dockerfile              # Cloud Run deployment
-│   └── .env.example            # Environment template
+│   │   ├── ai.js                  # Gemini: summaries, tags, smart search
+│   │   ├── maps.js                # reverse geocoding proxy
+│   │   └── user.js                # profile, settings, stats, export, demo seed
+│   ├── server.js                  # auth middleware, rate limiting, CORS
+│   ├── Dockerfile
+│   ├── .dockerignore              # keeps .env + service account out of images
+│   └── .env.example
 │
-├── mobile/                      # Flutter mobile app
+├── mobile/
 │   ├── lib/
-│   │   ├── models/             # Data models (Place, User)
-│   │   ├── providers/          # Riverpod state management
-│   │   ├── screens/            # UI screens
-│   │   ├── services/           # API & Firebase services
-│   │   ├── widgets/            # Reusable components
-│   │   └── main.dart           # App entry point
-│   ├── assets/                 # Images, fonts, icons
-│   ├── android/                # Android-specific code
-│   ├── ios/                    # iOS-specific code
-│   └── pubspec.yaml            # Flutter dependencies
+│   │   ├── models/                # Place, PlaceSummary, categories
+│   │   ├── providers/             # Riverpod: auth, places, settings
+│   │   ├── screens/               # auth, list, detail, add/edit, map, profile
+│   │   ├── services/              # backend client, Firestore, Places search
+│   │   ├── utils/                 # display helpers, static maps, web bootstrap
+│   │   └── config.example.dart    # copy to config.dart
+│   └── test/                      # unit tests
 │
-├── .github/workflows/           # CI/CD pipelines
-│   └── deploy-appetize.yml     # Auto-deploy to Appetize
+├── .github/workflows/
+│   ├── firebase-hosting-merge.yml # build + deploy web on push to main
+│   └── deploy-appetize.yml        # build + upload APK on push to main
 │
-├── screenshots/                 # App screenshots
-├── README.md                    # This file
-└── CONTRIBUTING.md              # Contribution guidelines
+├── firestore.rules                # per-user data isolation
+├── storage.rules                  # per-user photo isolation
+└── firestore.indexes.json         # composite index for the places query
 ```
 
 ---
 
-## 🔐 Security Features
+## 🔐 Security
 
-- ✅ Firebase ID token verification on all protected endpoints
-- ✅ Rate limiting on AI endpoints (100 requests per 15 minutes)
-- ✅ CORS configuration for production domains
-- ✅ Secrets stored in Google Secret Manager
-- ✅ Firestore security rules (user data isolation)
-- ✅ HTTPS only (enforced by Cloud Run)
-- ✅ Input validation and sanitization
-- ✅ Helmet.js security headers
-- ✅ No API keys in source code (gitignored)
-
----
-
-## 💰 Cost Estimate
-
-**Monthly costs for personal use:**
-
-| Service | Free Tier | Estimated Cost |
-|---------|-----------|----------------|
-| Google Gemini AI | 1.5M requests/month | **$0** |
-| Firebase (Auth, Firestore, Storage) | Generous free tier | **$0** |
-| Google Maps API | $200 monthly credit | **$0** |
-| Cloud Run | 2M requests/month | **$0** |
-| **Total** | | **$0/month** 🎉 |
-
-**For 1,000+ users:** ~$10-30/month depending on usage
+- Firebase ID token verified on every `/ai`, `/user` and `/maps` route
+- Firestore and Storage rules scope every document and file to its owner — including
+  on create, so a place can't be written under someone else's ID
+- Rate limiting per IP, with `trust proxy` set so Cloud Run's load balancer doesn't
+  collapse every caller into one bucket
+- Gemini and Geocoding keys live server-side only
+- Client keys are restricted per surface (see [API keys](#-api-keys))
+- Secrets kept out of the repo and out of Docker images
+- Helmet security headers, CORS allowlist, input validation and payload caps
 
 ---
 
-## 📝 API Documentation
+## 💰 Running costs
 
-### Authentication
-All protected endpoints require Firebase ID token:
+Everything sits inside free tiers at portfolio scale:
+
+| Service | Free allowance |
+|---------|----------------|
+| Gemini 2.5 Flash Lite | generous free tier |
+| Firebase Auth / Firestore / Storage / Hosting | Spark plan |
+| Maps Platform | 10,000 free calls per SKU per month |
+| Cloud Run | 2M requests/month |
+
+Two things to know. Maps Platform replaced its old flat $200 credit with **per-SKU
+free tiers in March 2025** — plenty here, but not the same model. And Cloud Run and
+Firebase Storage need billing *enabled* even to use the free tier; if billing lapses,
+Auth and Firestore keep working while everything else returns 503, which is a
+confusing failure to debug.
+
+---
+
+## 📝 API
+
+All routes except `/` and `/health` require:
+
 ```
 Authorization: Bearer <firebase_id_token>
 ```
 
-### Endpoints
+### AI
 
-#### AI Features
+| Endpoint | Body | Returns |
+|---|---|---|
+| `POST /ai/summarize-notes` | `title`, `notes`, `category`, `address` | `whyILikedIt`, `tips`, `bestTimeToGo` |
+| `POST /ai/suggest-tags` | `title`, `category`, optional `photoUrl` | `tags[]` |
+| `POST /ai/smart-search` | `query`, `places[]` | `matchingIds[]`, `explanation` |
 
-**POST** `/ai/summarize-notes`
-```json
-{
-  "notes": "Visited this beautiful park...",
-  "placeName": "Central Park"
-}
-```
+`photoUrl` is optional — a place being created hasn't uploaded its photo yet, so
+Gemini falls back to the title and category. Cloud Vision runs only when a URL is
+supplied.
 
-**Response:**
-```json
-{
-  "summary": "Beautiful urban park with...",
-  "tips": ["Best time: Morning hours", ...]
-}
-```
+### User
 
-**POST** `/ai/suggest-tags`
-```json
-{
-  "placeName": "Golden Gate Park",
-  "notes": "Great for picnics",
-  "category": "Park"
-}
-```
+| Endpoint | Purpose |
+|---|---|
+| `GET/PUT /user/profile` | profile document |
+| `GET/PUT /user/settings` | theme, notifications, preferences |
+| `GET /user/stats` | counts, averages, tag totals |
+| `POST /user/export` | full data export as JSON |
+| `POST /user/seed-demo` | populate a new guest account (idempotent) |
+| `DELETE /user/account` | delete the account and all its data |
 
-**Response:**
-```json
-{
-  "tags": ["outdoor", "scenic", "family-friendly"]
-}
-```
+### Maps
 
-#### User Management
+| Endpoint | Purpose |
+|---|---|
+| `GET /maps/reverse-geocode?lat=&lng=` | coordinates → address |
 
-**GET** `/user/profile`
-- Returns user profile information
-
-**GET** `/user/stats`
-- Returns user statistics (total places, favorites, etc.)
-
-**GET** `/health`
-- Health check endpoint
-
-For complete API documentation, see [Backend README](./backend/README.md)
-
----
-
-## 🎯 Future Enhancements
-
-- [ ] **Social Features** - Share places with friends and create collaborative lists
-- [ ] **Offline Mode** - Local caching for offline access
-- [ ] **Trip Planning** - Create multi-day trips with multiple places
-- [ ] **Recommendations** - AI-powered place suggestions based on preferences
-- [ ] **Import/Export** - Sync with Google Maps and other services
-- [ ] **Multi-language Support** - Localization for global users
-- [ ] **Photo Editing** - In-app filters and editing tools
-- [ ] **Reviews & Ratings** - Public reviews and community ratings
-- [ ] **Notifications** - Reminders for favorite places nearby
-- [ ] **Web Dashboard** - Desktop interface for managing places
+Full details in the [backend README](./backend/README.md).
 
 ---
 
 ## 🧪 Testing
 
-### Run Tests
 ```bash
-# Backend tests
-cd backend
-npm test
-
-# Flutter tests
-cd mobile
-flutter test
-
-# Integration tests
-flutter test integration_test/
+cd mobile && flutter test      # 25 unit tests
+cd mobile && flutter analyze   # clean
 ```
 
-### Manual Testing Checklist
-- [ ] User signup and login
-- [ ] Add place with photo
-- [ ] AI tag suggestions
-- [ ] AI note summarization
-- [ ] Search and filter
-- [ ] Mark as favorite
-- [ ] Edit and delete places
-- [ ] View on map
-- [ ] Profile statistics
+Tests cover `Place.fromFirestore` (defaults, unknown categories, unparseable dates,
+integer latitudes), `PlaceSummary.matches` (the check that invalidates a cached AI
+summary when notes change), and the display helpers that once crashed the profile
+screen on an empty display name. Both CI workflows run them before building.
+
+The backend has no automated tests yet — the endpoints are exercised manually and
+through the app.
+
+---
+
+## 🎯 Possible next steps
+
+- [ ] A map view showing every saved place at once
+- [ ] Multiple photos per place (the data model already stores a list; the UI takes one)
+- [ ] Sharing places or lists with other people
+- [ ] Offline support
+- [ ] Trip planning across several places
+- [ ] Backend test suite
 
 ---
 
 ## 📄 License
 
-MIT License - feel free to use this project for learning and portfolio purposes!
+MIT — use it for learning or portfolio purposes.
 
 ---
 
@@ -415,38 +367,20 @@ MIT License - feel free to use this project for learning and portfolio purposes!
 - 🌐 Portfolio: [esstar612.github.io/my_portfolio](https://esstar612.github.io/my_portfolio/)
 - 💼 LinkedIn: [linkedin.com/in/star-olaojo](https://www.linkedin.com/in/star-olaojo/)
 - 🐙 GitHub: [@Esstar612](https://github.com/Esstar612)
-- 📱 Live Demo: [Appetize.io](https://appetize.io/app/b_3ngeiuwtjjg7qmxhieybnpzq4u)
+- 🎮 Live demo: [favorite-places-app-94adb.web.app](https://favorite-places-app-94adb.web.app)
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **Google Gemini AI** - For providing free, powerful AI capabilities
-- **Firebase** - For comprehensive backend infrastructure
-- **Flutter Team** - For the amazing cross-platform framework
-- **Google Cloud** - For serverless deployment platform
-- **Appetize.io** - For browser-based app testing
+Google Gemini, Firebase, Flutter, Google Cloud, and Appetize.io.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and suggest improvements.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-## 📧 Contact
-
-Have questions or suggestions? Feel free to reach out:
-
-- Open an issue on [GitHub](https://github.com/Esstar612/FavoritePlaces/issues)
-- Connect on [LinkedIn](https://www.linkedin.com/in/star-olaojo/)
-- Check out my [portfolio](https://esstar612.github.io/my_portfolio/)
-
----
-
-**Built with ❤️ using Flutter, Firebase, and Google Cloud**
-
-[![Made with Flutter](https://img.shields.io/badge/Made%20with-Flutter-blue?style=flat-square&logo=flutter)](https://flutter.dev)
-[![Powered by Firebase](https://img.shields.io/badge/Powered%20by-Firebase-orange?style=flat-square&logo=firebase)](https://firebase.google.com)
-[![Deployed on Cloud Run](https://img.shields.io/badge/Deployed%20on-Cloud%20Run-blue?style=flat-square&logo=google-cloud)](https://cloud.google.com/run)
+**Built with Flutter, Firebase, and Google Cloud**
