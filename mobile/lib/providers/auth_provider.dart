@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'package:favorite_places/services/demo_service.dart';
+
 // ─── Stream provider: re-emits the current User (or null) ───────────────────
 final authStateProvider = StreamProvider<User?>((ref) {
   return FirebaseAuth.instance.authStateChanges();
@@ -77,10 +79,41 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
     }
   }
 
+  // ── Guest / demo sign-in ─────────────────────────────────────────────────
+  /// Signs in anonymously and asks the backend to seed sample places.
+  ///
+  /// Each guest gets their own Firebase uid, so they explore an isolated copy
+  /// of the data — nothing they change is visible to the next visitor, and the
+  /// existing security rules apply unchanged.
+  Future<void> continueAsGuest() async {
+    state = const AsyncValue.loading();
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+      // Non-fatal: a guest with an empty list is worse than one with samples,
+      // but not worth blocking sign-in over.
+      await DemoService.seed();
+      state = const AsyncValue.data(null);
+    } on FirebaseAuthException catch (e) {
+      state = AsyncValue.error(e, StackTrace.empty);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
   // ── Sign-out (works for both providers) ──────────────────────────────────
   Future<void> signOut() async {
     state = const AsyncValue.loading();
     try {
+      // A guest account has no way back in, so leaving it behind would just
+      // accumulate orphaned users and their data.
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && user.isAnonymous) {
+        try {
+          await user.delete();
+        } catch (_) {
+          // Needs recent login, or already gone — fall through to signOut.
+        }
+      }
       await GoogleSignIn().signOut();
       await FirebaseAuth.instance.signOut();
       state = const AsyncValue.data(null);
@@ -136,6 +169,8 @@ String firebaseAuthErrorMessage(Object error) {
         return 'Invalid verification code.';
       case 'invalid-verification-id':
         return 'Invalid verification ID.';
+      case 'admin-restricted-operation':
+        return 'Guest sign-in is not enabled for this app.';
       default:
         // Generic: this helper is shared by the sign-in, sign-up and
         // password-reset paths, so it can't assume which one failed.

@@ -34,6 +34,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authNotifierProvider.notifier).signInWithGoogle();
   }
 
+  Future<void> _continueAsGuest() async {
+    await ref.read(authNotifierProvider.notifier).continueAsGuest();
+  }
+
   Future<void> _resetPassword() async {
     if (_emailController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -213,7 +217,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+
+              // ── Guest / demo entry ───────────────────────────────────────
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: TextButton.icon(
+                  onPressed: isLoading ? null : _continueAsGuest,
+                  icon: const Icon(Icons.explore_outlined, size: 20),
+                  label: const Text('Continue as guest'),
+                ),
+              ),
+              Center(
+                child: Text(
+                  'Explore a sample account — no sign-up needed',
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
 
               // ── Sign Up link ─────────────────────────────────────────────
               Center(

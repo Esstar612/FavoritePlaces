@@ -171,6 +171,95 @@ router.put('/settings', async (req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+// POST /user/seed-demo
+// ───────────────────────────────────────────────────────────────────────────
+/**
+ * Give a brand-new (typically anonymous) account something to look at.
+ *
+ * Deliberately photoless: the app renders a map of each place when it has no
+ * photo, which looks better than stock imagery and keeps this endpoint free of
+ * any Storage dependency. A visitor who wants to see the photo flow can add
+ * their own place.
+ */
+const DEMO_PLACES = [
+  {
+    title: 'Blue Bottle Coffee', category: 'cafe', rating: 5, isFavorite: true,
+    lat: 37.7955, lng: -122.3937, address: '1 Ferry Building, San Francisco, CA',
+    tags: ['Hidden Gem', 'Great Views'],
+    notes: 'Amazing pour over, got there at 8am and it was quiet. Pricey but worth it. The window seats look out over the bay. Gets packed by 10.',
+  },
+  {
+    title: 'Golden Gate Park', category: 'park', rating: 4, isFavorite: false,
+    lat: 37.7694, lng: -122.4862, address: '501 Stanyan St, San Francisco, CA',
+    tags: ['Family Friendly', 'Quiet'],
+    notes: 'Huge. Rent a bike near the entrance, walking the whole thing takes hours. The Japanese Tea Garden is worth the entry fee. Go on a weekday, weekends are packed.',
+  },
+  {
+    title: 'Tartine Bakery', category: 'restaurant', rating: 5, isFavorite: true,
+    lat: 37.7614, lng: -122.4241, address: '600 Guerrero St, San Francisco, CA',
+    tags: ['Must Visit', 'Good Food'],
+    notes: 'The morning bun is the thing to get. Line is long but moves fast. Cash only used to be true, not anymore. Get there before 9 or after 2.',
+  },
+  {
+    title: 'SFMOMA', category: 'museum', rating: 4, isFavorite: false,
+    lat: 37.7857, lng: -122.4011, address: '151 3rd St, San Francisco, CA',
+    tags: ['Instagrammable'],
+    notes: 'Seven floors, do not try to do it all in one visit. The living wall on floor 3 is the best photo spot. Free for under 18.',
+  },
+  {
+    title: 'Alcatraz Island', category: 'other', rating: 5, isFavorite: false,
+    lat: 37.8267, lng: -122.4230, address: 'Alcatraz Island, San Francisco, CA, USA',
+    tags: ['Must Visit'],
+    notes: 'Book the night tour, it sells out weeks ahead. The audio guide is genuinely good. Bring a jacket, the crossing is cold even in summer.',
+  },
+];
+
+router.post('/seed-demo', async (req, res) => {
+  try {
+    const userId = req.user.uid;
+
+    // Idempotent: never overwrite an account that already has content.
+    const existing = await db.collection('places')
+      .where('userId', '==', userId).limit(1).get();
+    if (!existing.empty) {
+      return res.json({ seeded: false, reason: 'account already has places' });
+    }
+
+    const now = Date.now();
+    const batch = db.batch();
+    DEMO_PLACES.forEach((p, i) => {
+      const ref = db.collection('places').doc();
+      batch.set(ref, {
+        userId,
+        title: p.title,
+        photoUrls: [],
+        lat: p.lat,
+        lng: p.lng,
+        address: p.address,
+        category: p.category,
+        tags: p.tags,
+        notes: p.notes,
+        rating: p.rating,
+        isFavorite: p.isFavorite,
+        visitDate: new Date(now - (i + 1) * 86400000).toISOString(),
+        // Descending so the list order is stable and matches this array.
+        createdAt: new Date(now - i * 1000).toISOString(),
+      });
+    });
+    await batch.commit();
+
+    console.log(`\u2705 Demo data seeded for user ${userId} (${DEMO_PLACES.length} places)`);
+    res.json({ seeded: true, count: DEMO_PLACES.length });
+  } catch (error) {
+    console.error('Seed demo error:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to seed demo data',
+    });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────
 // GET /user/stats
 // ───────────────────────────────────────────────────────────────────────────
 /**
