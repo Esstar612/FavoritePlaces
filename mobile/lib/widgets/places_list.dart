@@ -107,7 +107,7 @@ class PlacesList extends ConsumerWidget {
                 Icon(
                   Icons.explore_outlined,
                   size: 100,
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -122,7 +122,7 @@ class PlacesList extends ConsumerWidget {
                   'Try adjusting your filters or\ntap + to add your first place!',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                 ),
               ],
@@ -187,7 +187,7 @@ class PlacesList extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 4,
                                 ),
                               ],
@@ -286,7 +286,7 @@ class PlacesList extends ConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                                       color:
-                                          Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                          Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                     ),
                               ),
                             ),
@@ -309,7 +309,7 @@ class PlacesList extends ConsumerWidget {
                                   color: Theme.of(context)
                                       .colorScheme
                                       .secondaryContainer
-                                      .withOpacity(0.5),
+                                      .withValues(alpha: 0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -332,7 +332,7 @@ class PlacesList extends ConsumerWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                   fontStyle: FontStyle.italic,
                                 ),
                           ),

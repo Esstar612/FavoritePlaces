@@ -260,47 +260,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (user == null) return;
 
     final emailController = TextEditingController();
-    
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'This will permanently delete your account and all associated data. This action cannot be undone.',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const Text('Type your email to confirm:'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(
-                hintText: user.email,
-                border: const OutlineInputBorder(),
+
+    // The typed value is read after the dialog closes, so capture it before
+    // disposing rather than holding the controller past its usefulness.
+    final bool? confirmed;
+    final String typedEmail;
+    try {
+      confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Account'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This will permanently delete your account and all associated data. This action cannot be undone.',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 16),
+              const Text('Type your email to confirm:'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: emailController,
+                decoration: InputDecoration(
+                  hintText: user.email,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete Forever'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete Forever'),
-          ),
-        ],
-      ),
-    );
+      );
+      typedEmail = emailController.text.trim();
+    } finally {
+      emailController.dispose();
+    }
 
     if (confirmed == true && mounted) {
-      if (emailController.text.trim() != user.email) {
+      if (typedEmail != user.email) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Email does not match'),
@@ -319,7 +328,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
           },
-          body: jsonEncode({'confirmEmail': user.email}),
+          // What the user typed, not user.email — sending the latter would
+          // make the backend's confirmation check trivially self-satisfying.
+          body: jsonEncode({'confirmEmail': typedEmail}),
         );
 
         if (response.statusCode == 200) {

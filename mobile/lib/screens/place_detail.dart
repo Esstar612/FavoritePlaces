@@ -112,7 +112,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                       ),
                     ),
                   ),
@@ -213,7 +213,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                     Text(
                       'Visited: ${_formatDate(current.visitDate)}',
                       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                   ]),
@@ -239,7 +239,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(current.notes, style: Theme.of(context).textTheme.bodyLarge),
@@ -299,7 +299,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                             height: 200, width: double.infinity, fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Container(
                               height: 200,
-                              color: Theme.of(context).colorScheme.surfaceVariant,
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
                               child: const Center(child: Icon(Icons.map, size: 48)),
                             ),
                           ),
@@ -310,7 +310,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                                  colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+                                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.8)],
                                 ),
                               ),
                               child: Row(children: [
@@ -401,9 +401,9 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   Widget _summaryCard(BuildContext context, PlaceSummary s) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.25),
+      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+      border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,

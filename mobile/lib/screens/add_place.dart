@@ -217,7 +217,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
 
             // ── Category ───────────────────────────────────────────────────
             DropdownButtonFormField<PlaceCategory>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: const InputDecoration(
                 labelText: 'Category',
                 border: OutlineInputBorder(),

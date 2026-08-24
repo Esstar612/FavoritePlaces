@@ -107,7 +107,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               Text(
                 'Create your account to get started',
                 style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
               ),
 
@@ -202,7 +202,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     Text(
                       'Already have an account? ',
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                     TextButton(

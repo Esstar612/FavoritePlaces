@@ -322,7 +322,7 @@ class _MapScreenState extends State<MapScreen> {
         circleId: const CircleId('self-halo'),
         center: self,
         radius: 45,
-        fillColor: blue.withOpacity(0.15),
+        fillColor: blue.withValues(alpha: 0.15),
         strokeWidth: 0,
       ),
       Circle(

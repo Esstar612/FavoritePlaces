@@ -157,7 +157,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Text(
               accountSubtitle(user),
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
             ),
 
@@ -192,6 +192,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Divider(indent: 24, endIndent: 24),
 
             // ── Enhanced Stats (from backend) ──────────────────────────
+            // Reserve the space while loading so the section fades in rather
+            // than shoving the rest of the page down when it arrives.
+            if (_backendStats == null && _isLoadingStats) ...[
+              _sectionHeader(context, 'Statistics'),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: SizedBox(
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              const Divider(indent: 24, endIndent: 24),
+            ],
+
             if (_backendStats != null) ...[
               _sectionHeader(context, 'Statistics'),
               
@@ -298,7 +314,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
         ),
       ],

@@ -144,7 +144,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
         filtered.sort((a, b) => a.category.name.compareTo(b.category.name));
         break;
       case SortOption.recent:
-      default:
         filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
     }
@@ -283,10 +282,10 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.25),
+                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
