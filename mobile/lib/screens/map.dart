@@ -45,6 +45,11 @@ class _MapScreenState extends State<MapScreen> {
   /// web, where the position is already cached.
   LatLng? _pendingRecentre;
 
+  /// Where the device says it is. Only drawn on web: google_maps_flutter_web
+  /// leaves myLocationEnabled unimplemented ("needs to be built through
+  /// navigator.geolocation"), so the native blue dot never appears there.
+  LatLng? _selfLocation;
+
   // ── search ────────────────────────────────────────────────────────────────
   final _searchController = TextEditingController();
   final _search = PlacesSearchService();
@@ -89,10 +94,16 @@ class _MapScreenState extends State<MapScreen> {
     final here = await _currentLatLng();
     if (here == null || !mounted) return;
 
-    // Don't yank the camera out from under someone who already acted.
+    // Still worth showing where they are, even if they've already chosen.
+    if (mounted) setState(() => _selfLocation = here);
+
+    // But don't yank the camera out from under someone who already acted.
     if (_pickedLocation != null || _searchController.text.isNotEmpty) return;
 
-    setState(() => _locatedSelf = true);
+    setState(() {
+      _locatedSelf = true;
+      _selfLocation = here;
+    });
     await _moveTo(here);
   }
 
@@ -255,6 +266,7 @@ class _MapScreenState extends State<MapScreen> {
                         },
                   initialCameraPosition: camera,
                   markers: _markers(),
+                  circles: _selfCircles(),
                 ),
 
                 if (widget.isSelecting) _searchOverlay(context),
@@ -296,6 +308,32 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
     );
+  }
+
+  /// A stand-in for the platform "blue dot" on web. Rendered as two circles —
+  /// a translucent accuracy halo and a solid core — so it reads as "you are
+  /// here" rather than being mistaken for the red selection pin.
+  Set<Circle> _selfCircles() {
+    final self = _selfLocation;
+    if (!kIsWeb || self == null) return const {};
+    const blue = Color(0xFF4285F4);
+    return {
+      Circle(
+        circleId: const CircleId('self-halo'),
+        center: self,
+        radius: 45,
+        fillColor: blue.withOpacity(0.15),
+        strokeWidth: 0,
+      ),
+      Circle(
+        circleId: const CircleId('self-core'),
+        center: self,
+        radius: 9,
+        fillColor: blue,
+        strokeColor: Colors.white,
+        strokeWidth: 2,
+      ),
+    };
   }
 
   Set<Marker> _markers() {
