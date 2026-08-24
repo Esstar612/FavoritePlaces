@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/services/places_search_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
@@ -37,6 +38,12 @@ class _MapScreenState extends State<MapScreen> {
 
   GoogleMapController? _controller;
   CameraPosition? _initialCamera;
+  bool _locatedSelf = false;
+  /// Set when the device reports in before the map controller exists; applied
+  /// by onMapCreated. Without this the recentre is silently dropped whenever
+  /// locating wins the race against map creation — which it usually does on
+  /// web, where the position is already cached.
+  LatLng? _pendingRecentre;
 
   // ── search ────────────────────────────────────────────────────────────────
   final _searchController = TextEditingController();
@@ -59,48 +66,77 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  /// An explicit location wins; otherwise try the device, then fall back.
+  /// Show a map immediately, then re-centre on the device if it reports in.
+  ///
+  /// Locating is deliberately not awaited before the first frame: on the web
+  /// the browser only prompts for permission when a position is actually
+  /// requested, and the user may take seconds to answer — blocking on that
+  /// would leave the screen on a spinner.
   Future<void> _resolveInitialCamera() async {
     final supplied = widget.location;
-    if (supplied != null) {
-      setState(() => _initialCamera = CameraPosition(
-            target: LatLng(supplied.latitude, supplied.longitude),
-            zoom: _placeZoom,
-          ));
+    setState(() {
+      _initialCamera = supplied != null
+          ? CameraPosition(
+              target: LatLng(supplied.latitude, supplied.longitude),
+              zoom: _placeZoom,
+            )
+          : const CameraPosition(target: _fallbackTarget, zoom: _fallbackZoom);
+    });
+
+    // An explicit location wins — don't override it with the device's.
+    if (supplied != null) return;
+
+    final here = await _currentLatLng();
+    if (here == null || !mounted) return;
+
+    // Don't yank the camera out from under someone who already acted.
+    if (_pickedLocation != null || _searchController.text.isNotEmpty) return;
+
+    setState(() => _locatedSelf = true);
+    await _moveTo(here);
+  }
+
+  /// Move the camera, deferring until the controller exists.
+  Future<void> _moveTo(LatLng target) async {
+    final controller = _controller;
+    if (controller == null) {
+      _pendingRecentre = target;
       return;
     }
+    await controller.animateCamera(
+      CameraUpdate.newLatLngZoom(target, _placeZoom),
+    );
+  }
 
-    CameraPosition camera =
-        const CameraPosition(target: _fallbackTarget, zoom: _fallbackZoom);
+  Future<LatLng?> _currentLatLng() async {
     try {
       final location = Location();
 
-      // Permission starts out denied on a fresh install and in the browser, so
-      // it has to be asked for — merely checking it means the picker always
-      // falls back to the wide view.
-      var status = await location.hasPermission();
-      if (status == PermissionStatus.denied) {
-        status = await location.requestPermission();
-      }
-
-      final allowed = status == PermissionStatus.granted ||
-          status == PermissionStatus.grantedLimited;
-
-      if (allowed && await location.serviceEnabled()) {
-        final data = await location.getLocation().timeout(
-              const Duration(seconds: 8),
-            );
-        final lat = data.latitude, lng = data.longitude;
-        if (lat != null && lng != null) {
-          camera = CameraPosition(target: LatLng(lat, lng), zoom: _placeZoom);
+      // On web, requesting a position *is* the permission prompt — there is no
+      // separate grant step, and asking permission first reports "denied"
+      // while the browser is still only in the "prompt" state. Native does
+      // need the explicit request.
+      if (!kIsWeb) {
+        var status = await location.hasPermission();
+        if (status == PermissionStatus.denied) {
+          status = await location.requestPermission();
         }
+        final allowed = status == PermissionStatus.granted ||
+            status == PermissionStatus.grantedLimited;
+        if (!allowed || !await location.serviceEnabled()) return null;
       }
-    } catch (_) {
-      // Denied, unavailable, or timed out — keep the fallback. Search and pan
-      // both still work, so this is a degraded start, not a broken screen.
-    }
 
-    if (mounted) setState(() => _initialCamera = camera);
+      final data = await location.getLocation().timeout(
+            const Duration(seconds: 20),
+          );
+      final lat = data.latitude, lng = data.longitude;
+      if (lat == null || lng == null) return null;
+      return LatLng(lat, lng);
+    } catch (_) {
+      // Denied, unsupported, or timed out. The fallback map is already up and
+      // search and pan both work, so this is a degraded start, not a failure.
+      return null;
+    }
   }
 
   // ── search handling ───────────────────────────────────────────────────────
@@ -146,9 +182,7 @@ class _MapScreenState extends State<MapScreen> {
         _searchController.text = suggestion.primaryText;
         _searching = false;
       });
-      await _controller?.animateCamera(
-        CameraUpdate.newLatLngZoom(target, _placeZoom),
-      );
+      await _moveTo(target);
     } catch (e) {
       if (!mounted) return;
       setState(() => _searching = false);
@@ -197,7 +231,16 @@ class _MapScreenState extends State<MapScreen> {
           : Stack(
               children: [
                 GoogleMap(
-                  onMapCreated: (c) => _controller = c,
+                  onMapCreated: (c) {
+                    _controller = c;
+                    final pending = _pendingRecentre;
+                    if (pending != null) {
+                      _pendingRecentre = null;
+                      c.animateCamera(
+                        CameraUpdate.newLatLngZoom(pending, _placeZoom),
+                      );
+                    }
+                  },
                   myLocationEnabled: true,
                   myLocationButtonEnabled: true,
                   onTap: !widget.isSelecting
@@ -215,6 +258,23 @@ class _MapScreenState extends State<MapScreen> {
                 ),
 
                 if (widget.isSelecting) _searchOverlay(context),
+
+                // Brief confirmation that the map moved to the user, since it
+                // happens after the first frame rather than before it.
+                if (_locatedSelf && _pickedAddress == null)
+                  Positioned(
+                    left: 16, right: 16, bottom: 16,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(children: const [
+                          Icon(Icons.my_location, size: 18),
+                          SizedBox(width: 8),
+                          Expanded(child: Text('Centred on your location')),
+                        ]),
+                      ),
+                    ),
+                  ),
 
                 if (_pickedAddress != null)
                   Positioned(
