@@ -74,10 +74,21 @@ class _MapScreenState extends State<MapScreen> {
         const CameraPosition(target: _fallbackTarget, zoom: _fallbackZoom);
     try {
       final location = Location();
-      if (await location.serviceEnabled() &&
-          await location.hasPermission() == PermissionStatus.granted) {
+
+      // Permission starts out denied on a fresh install and in the browser, so
+      // it has to be asked for — merely checking it means the picker always
+      // falls back to the wide view.
+      var status = await location.hasPermission();
+      if (status == PermissionStatus.denied) {
+        status = await location.requestPermission();
+      }
+
+      final allowed = status == PermissionStatus.granted ||
+          status == PermissionStatus.grantedLimited;
+
+      if (allowed && await location.serviceEnabled()) {
         final data = await location.getLocation().timeout(
-              const Duration(seconds: 5),
+              const Duration(seconds: 8),
             );
         final lat = data.latitude, lng = data.longitude;
         if (lat != null && lng != null) {
@@ -85,7 +96,8 @@ class _MapScreenState extends State<MapScreen> {
         }
       }
     } catch (_) {
-      // Keep the fallback — the user can search or pan.
+      // Denied, unavailable, or timed out — keep the fallback. Search and pan
+      // both still work, so this is a degraded start, not a broken screen.
     }
 
     if (mounted) setState(() => _initialCamera = camera);
