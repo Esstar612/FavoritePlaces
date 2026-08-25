@@ -1,11 +1,11 @@
 {
-    "name": "favorite_places",
-    "short_name": "favorite_places",
+    "name": "Favorite Places",
+    "short_name": "Favorite Places",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#2B2438",
+    "theme_color": "#5B4B8A",
+    "description": "Save and organise the places worth remembering, with AI summaries, tag suggestions and natural-language search.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
