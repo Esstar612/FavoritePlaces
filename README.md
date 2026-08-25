@@ -21,6 +21,10 @@ Flutter on Android and the web, an Express API on Cloud Run, Firebase for auth/d
 Hit **Continue as guest** — no sign-up, no email. You get your own private sandbox
 pre-loaded with five sample places, and nothing you do there is visible to anyone else.
 
+It's a mobile app, so on a desktop browser it renders inside a phone frame rather
+than stretching a handset layout across a 1440px window. Narrow the window (or open
+it on a phone) and it fills the screen normally.
+
 Worth trying once you're in:
 
 | | |
