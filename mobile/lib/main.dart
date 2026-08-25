@@ -7,6 +7,7 @@ import 'firebase_options_web.dart';
 import 'providers/user_settings.dart';
 import 'screens/auth_gate.dart';
 import 'utils/maps_loader.dart';
+import 'widgets/web_phone_frame.dart';
 
 const _seedColor = Color.fromARGB(255, 102, 6, 247);
 
@@ -68,6 +69,9 @@ class MyApp extends ConsumerWidget {
       theme: _themeFor(lightColorScheme),
       darkTheme: _themeFor(darkColorScheme),
       themeMode: themeMode,
+      // Wraps the whole navigator, so dialogs and snackbars stay inside the
+      // frame too. No-op on mobile and in narrow windows.
+      builder: (context, child) => WebPhoneFrame(child: child ?? const SizedBox.shrink()),
       // AuthGate decides: login screens or main app
       home: const AuthGate(),
     );
