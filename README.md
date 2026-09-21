@@ -378,7 +378,7 @@ MIT — use it for learning or portfolio purposes.
 
 **Star Olaojo**
 
-- 🌐 Portfolio: [esstar612.github.io/my_portfolio](https://esstar612.github.io/my_portfolio/)
+- 🌐 Portfolio: [portfolio-three-rose-44.vercel.app](https://portfolio-three-rose-44.vercel.app)
 - 💼 LinkedIn: [linkedin.com/in/star-olaojo](https://www.linkedin.com/in/star-olaojo/)
 - 🐙 GitHub: [@Esstar612](https://github.com/Esstar612)
 - 🎮 Live demo: [favorite-places-app-94adb.web.app](https://favorite-places-app-94adb.web.app)
