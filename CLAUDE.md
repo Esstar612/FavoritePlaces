@@ -66,3 +66,5 @@ that recommends outings from a user's saved places using tool calling.
 
 - After every completed step, append a dated entry to `agent/BUILD_LOG.md`
   using the section template at the top of that file.
+- Entries describe the work, decisions, numbers, and problems only. Never
+  record who wrote, placed, or approved what.

@@ -125,3 +125,65 @@ Entry template:
 
 ### Case study
 none
+
+---
+
+## 2026-09-25: Step 1, core agent (in progress)
+
+### Part A: design (approved)
+
+#### What we built
+A design for `POST /recommend`, with no code yet. It was approved with four changes, all included below.
+
+#### Decisions made
+- **PlacesStore Protocol with one method, `list_places(uid)`.** The tools do all filtering, ID lookup, and distance math over that list, so each store enforces ownership in exactly one place. Rejected: extra methods such as `get_places(uid, ids)`, which would add a second place to get ownership right.
+- **Two stores.**
+  - `FirestorePlacesStore` queries the top-level `places` collection with `userId == uid`, ordered by `createdAt` descending, limited to 200.
+  - `FixturePlacesStore` is a copy of `DEMO_PLACES` with fixed IDs, plus a second user so tests can catch data leaking between users. Rejected: parsing `backend/routes/user.js` at runtime, which is brittle and ties Python to JS syntax.
+- **Three tools, none with a uid argument.**
+  - `search_places` returns short rows with no notes.
+  - `get_place_details` returns notes and summary for up to 5 IDs.
+  - `plan_route` returns distances and a visiting order.
+  - Because search leaves out notes and coordinates, a good answer needs more than one tool call.
+- **uid delivery.** The graph is built with `context_schema`, and each tool takes `runtime: ToolRuntime[AgentContext]`.
+  - Checked in the installed source (`langgraph` 1.2.12, `langchain-core` 1.6.5): injected args are left out of the model's tool schema and filtered out of tool callback inputs.
+  - Rejected: `InjectedState`, because state is traced.
+  - Rejected: `config["configurable"]`, because it can be copied into trace metadata.
+  - Rejected: per-request closures, because tool objects would change every request.
+- **Graph shape:** `agent`, then `tools`, then back to `agent`, and finally `finalize`, which produces structured output. `finalize` is where the Step 4 confidence check will plug in. Model creation sits behind `get_chat_model(provider)` for Step 2.
+- **Changes from review.**
+  1. **Grounding check.** Every place ID returned by any tool is recorded. After the run, recommendations are split three ways:
+     - owned and retrieved: kept
+     - owned but never retrieved: dropped, logged as `ungrounded_place_ids`
+     - not owned: dropped, logged as `rejected_place_ids`
+  2. **Request-scoped memoizing store,** so Firestore is read at most once per request, including the final check. The Protocol is unchanged.
+  3. **Trace redaction in firestore mode.** Notes and summary are masked everywhere in traces. Fixture mode stays fully traced. Before showing the code, check that LangSmith's hiding hooks apply to LLM runs as well as tool runs.
+  4. **200-place limit logged as a known limitation.** The store warns when a query returns exactly 200.
+
+#### Known limitations
+- `FirestorePlacesStore` reads at most 200 places per user, the same cap as `MAX_SEARCH_PLACES` in `backend/routes/ai.js`. A user with more than 200 places only gets recommendations from their 200 most recent (by `createdAt`), and a warning is logged when the cap is hit.
+
+### Part B: store and auth
+
+#### What we built
+- `PLACES_STORE` (`fixture` or `firestore`, default `fixture`) and `CHECK_REVOKED` (default off) in `config.py` and `.env.example`
+- `places/models.py`
+- `places/fixtures.py`
+- `places/store.py`: Protocol, `FirestorePlacesStore`, `FixturePlacesStore`, `RequestScopedPlacesStore`, `build_places_store`
+- `api/auth.py`: the `get_verified_uid` dependency
+- `tests/test_places_store.py`
+- `tests/test_auth.py`
+
+#### Decisions made
+- **`check_revoked` defaults to off.** Turning it on means one more Firebase Auth call per request (more latency, and it needs credentials that can read users). In return it rejects revoked sessions and disabled users right away instead of when the token expires (up to 1 hour). The Express backend doesn't check revocation either. Guest accounts delete their places on sign-out, so a still-valid token for a deleted guest finds nothing. It's a config flag, so it can be turned on later.
+- **Only token problems return 401.**
+  - Invalid, expired, revoked, disabled, missing uid, and malformed headers all get a bare `401 Unauthorized`.
+  - `CertificateFetchError` (can't reach Google's public keys) returns 503. Rejected: reporting that as 401, which would blame the user for our outage.
+  - `get_firebase_app()` runs outside the error handling, so a misconfigured server shows up as a 500 instead of looking like bad tokens.
+- **`RequestScopedPlacesStore` is bound to one uid** and raises if asked for a different one. That's a second guard on the trust rule. It returns copies so tools can't change cached data, and a lock keeps parallel tool calls from reading Firestore twice.
+- **`FirestorePlacesStore` double-checks each document's `userId`** even though the query already filters by it. It skips malformed documents and logs a warning. Rejected: failing the whole request, which is what the app's `Place.fromFirestore` does.
+
+#### Numbers measured
+- `pytest -v` (config in `agent/pyproject.toml`, tests in `agent/tests/`): 38 passed in 1.00s.
+  That is 16 in `test_auth.py`, 14 in `test_places_store.py`, 7 in `test_firebase_app.py`, and 1 in `test_health.py`.
+- All of them ran with no Firebase credentials and no network: the Firestore client is mocked and `verify_id_token` is patched.
