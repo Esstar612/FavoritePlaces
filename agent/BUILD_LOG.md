@@ -244,6 +244,9 @@ A design for `POST /recommend`, with no code yet. It was approved with four chan
   - 0 ungrounded, 0 rejected
   - Trace recorded in LangSmith project `favorite-places-outing-agent`
 - The structured-output `finalize` step worked with `claude-sonnet-5`.
+- **Trace check for smoke run `14f54c62-354d-4acd-afe4-f86257f8dbd2`, done in the LangSmith UI:** `demo-user` and `uid` appear nowhere in the root LangGraph run, the first `search_places` tool run, the first `ChatAnthropic` run, or the `finalize` run. That covers inputs, outputs, and metadata.
+  - Tool run inputs show only the model's arguments (`category`, `min_rating`), with no injected runtime.
+  - Run metadata holds only `provider`, `model`, `places_store`, `revision_id`, and LangGraph and SDK runtime fields.
 
 #### Observations for Step 3 evals
 - The answer called `plan_route`'s straight-line distance "a short 8.6km drive". The tool gives a straight line, not a road distance.
