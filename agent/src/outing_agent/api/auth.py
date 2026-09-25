@@ -1,5 +1,3 @@
-"""FastAPI dependency that turns a Firebase ID token into a verified uid."""
-
 import logging
 
 from fastapi import Depends, HTTPException, status
@@ -11,10 +9,9 @@ from outing_agent.firebase_app import get_firebase_app
 
 log = logging.getLogger(__name__)
 
-# auto_error=False so every failure goes through the bare 401 below.
+# auto_error=False so every failure gets the same bare 401.
 _bearer = HTTPBearer(auto_error=False)
 
-# Invalid, expired, revoked, disabled, or deleted user (the last two only when checking revocation).
 _TOKEN_ERRORS = (auth.InvalidIdTokenError, auth.UserDisabledError, auth.UserNotFoundError, ValueError)
 
 
@@ -29,10 +26,9 @@ def _unauthorized() -> HTTPException:
 def get_verified_uid(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> str:
-    """Return the caller's uid. This is the only place a uid enters the service."""
     if credentials is None:
         raise _unauthorized()
-    # Outside the try: a misconfigured server is a 500, not a bad token.
+    # Outside the try so a misconfigured server is a 500, not a bad token.
     app = get_firebase_app()
     try:
         decoded = auth.verify_id_token(

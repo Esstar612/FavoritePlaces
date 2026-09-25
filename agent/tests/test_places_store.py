@@ -49,7 +49,6 @@ def _doc(doc_id, data):
 
 
 def _client(docs):
-    """A mock Firestore client whose places query streams `docs`."""
     client = MagicMock()
     query = client.collection.return_value.where.return_value.order_by.return_value.limit.return_value
     query.stream.return_value = iter(docs)
@@ -58,9 +57,6 @@ def _client(docs):
 
 def _store(client):
     return FirestorePlacesStore(client_factory=lambda: client)
-
-
-# FirestorePlacesStore
 
 
 @pytest.mark.parametrize("uid", [DEMO_UID, "abc123"])
@@ -145,9 +141,6 @@ def test_firestore_store_does_not_warn_below_the_limit(caplog):
     assert caplog.records == []
 
 
-# FixturePlacesStore
-
-
 def test_fixture_store_returns_only_that_users_places():
     store = FixturePlacesStore()
 
@@ -173,9 +166,6 @@ def test_fixture_store_returns_copies():
 
     assert len(again) == len(DEMO_IDS)
     assert all(p.notes != "changed" for p in again)
-
-
-# RequestScopedPlacesStore
 
 
 class _CountingStore:

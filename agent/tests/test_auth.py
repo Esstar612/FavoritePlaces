@@ -10,8 +10,6 @@ APP_SENTINEL = object()
 
 @pytest.fixture
 def verify(monkeypatch):
-    """Replace verify_id_token; tests set .result or .error on the returned stub."""
-
     class Stub:
         result = {"uid": "user-123"}
         error = None

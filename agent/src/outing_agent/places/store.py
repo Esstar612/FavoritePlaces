@@ -1,5 +1,3 @@
-"""Where the agent reads a user's saved places from."""
-
 import logging
 import threading
 from collections.abc import Callable, Mapping
@@ -15,7 +13,7 @@ from outing_agent.places.models import CATEGORIES, Place, PlaceSummary
 
 log = logging.getLogger(__name__)
 
-# Same cap as MAX_SEARCH_PLACES in backend/routes/ai.js. See BUILD_LOG known limitations.
+# Matches MAX_SEARCH_PLACES in backend/routes/ai.js.
 MAX_PLACES = 200
 
 
@@ -24,8 +22,6 @@ class PlacesStore(Protocol):
 
 
 class FirestorePlacesStore:
-    """Reads the app's top-level places collection, filtered to one owner."""
-
     def __init__(self, client_factory: Callable[[], Any] | None = None):
         self._client_factory = client_factory or _default_client
 
@@ -48,7 +44,7 @@ class FirestorePlacesStore:
         places = []
         for doc in docs:
             data = doc.to_dict() or {}
-            # The query already filters on userId; this guards against a query bug.
+            # Defense in depth in case the query ever returns another user's document.
             if data.get("userId") != uid:
                 log.warning("dropped place %s: owner does not match the query", doc.id)
                 continue
@@ -63,8 +59,6 @@ def _default_client():
 
 
 class FixturePlacesStore:
-    """Demo places keyed by uid. Needs no credentials."""
-
     def __init__(self, places_by_uid: Mapping[str, list[Place]] | None = None):
         self._places = FIXTURE_PLACES if places_by_uid is None else places_by_uid
 
@@ -73,8 +67,6 @@ class FixturePlacesStore:
 
 
 class RequestScopedPlacesStore:
-    """Wraps a store for one request: bound to one uid, reads the backing store once."""
-
     def __init__(self, inner: PlacesStore, uid: str):
         self._inner = inner
         self._uid = uid
@@ -99,7 +91,7 @@ def build_places_store(kind: str) -> PlacesStore:
 
 
 def place_from_firestore(doc_id: str, data: Mapping[str, Any]) -> Place | None:
-    """Mirror Place.fromFirestore in mobile/lib/models/place.dart. None if malformed."""
+    # Mirrors Place.fromFirestore in mobile/lib/models/place.dart.
     category = data.get("category")
     try:
         return Place(
@@ -118,7 +110,7 @@ def place_from_firestore(doc_id: str, data: Mapping[str, Any]) -> Place | None:
             summary=_parse_summary(data.get("summary")),
         )
     except (KeyError, TypeError, ValueError) as error:
-        # Log the error type only, never field values.
+        # Error type only: field values could include a user's notes.
         log.warning("skipped malformed place %s: %s", doc_id, type(error).__name__)
         return None
 

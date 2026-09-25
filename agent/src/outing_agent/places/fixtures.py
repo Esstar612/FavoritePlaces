@@ -1,16 +1,10 @@
-"""Demo places for tests, evals, and local runs without credentials.
-
-DEMO_UID's places are copied from DEMO_PLACES in backend/routes/user.js (the
-guest sandbox seed), with fixed IDs and dates so runs are reproducible. Keep
-them in sync if that seed changes. OTHER_UID exists so tests and evals can
-catch one user's places leaking into another user's results.
-"""
-
 from datetime import datetime, timezone
 
 from outing_agent.places.models import Place
 
+# Keep in sync with DEMO_PLACES in backend/routes/user.js.
 DEMO_UID = "demo-user"
+# Exists so tests and evals catch one user's places leaking into another's.
 OTHER_UID = "other-user"
 
 

@@ -1,5 +1,3 @@
-"""Saved place records, mirroring the Firestore documents the app writes."""
-
 from datetime import datetime
 from typing import Literal, get_args
 
@@ -13,16 +11,13 @@ CATEGORIES: tuple[str, ...] = get_args(Category)
 
 
 class PlaceSummary(BaseModel):
-    """The cached AI summary stored on a place."""
-
     why_i_liked_it: str = ""
     tips: str = ""
     best_time_to_go: str = ""
 
 
 class Place(BaseModel):
-    """One saved place. No userId: the store query enforces ownership."""
-
+    # No userId: ownership is enforced by the store query.
     id: str
     title: str
     category: Category = "other"

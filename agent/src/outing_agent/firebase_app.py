@@ -1,5 +1,3 @@
-"""Lazy Firebase Admin setup. Nothing here runs at import time."""
-
 import json
 import os
 import threading
