@@ -13,7 +13,6 @@ from outing_agent.places.models import CATEGORIES, Place, PlaceSummary
 
 log = logging.getLogger(__name__)
 
-# Matches MAX_SEARCH_PLACES in backend/routes/ai.js.
 MAX_PLACES = 200
 
 
@@ -91,7 +90,6 @@ def build_places_store(kind: str) -> PlacesStore:
 
 
 def place_from_firestore(doc_id: str, data: Mapping[str, Any]) -> Place | None:
-    # Mirrors Place.fromFirestore in mobile/lib/models/place.dart.
     category = data.get("category")
     try:
         return Place(

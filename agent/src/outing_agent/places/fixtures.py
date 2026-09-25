@@ -2,9 +2,7 @@ from datetime import datetime, timezone
 
 from outing_agent.places.models import Place
 
-# Keep in sync with DEMO_PLACES in backend/routes/user.js.
 DEMO_UID = "demo-user"
-# Exists so tests and evals catch one user's places leaking into another's.
 OTHER_UID = "other-user"
 
 

@@ -17,7 +17,6 @@ class PlaceSummary(BaseModel):
 
 
 class Place(BaseModel):
-    # No userId: ownership is enforced by the store query.
     id: str
     title: str
     category: Category = "other"

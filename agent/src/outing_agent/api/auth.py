@@ -9,7 +9,6 @@ from outing_agent.firebase_app import get_firebase_app
 
 log = logging.getLogger(__name__)
 
-# auto_error=False so every failure gets the same bare 401.
 _bearer = HTTPBearer(auto_error=False)
 
 _TOKEN_ERRORS = (auth.InvalidIdTokenError, auth.UserDisabledError, auth.UserNotFoundError, ValueError)

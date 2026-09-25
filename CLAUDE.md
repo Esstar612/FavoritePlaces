@@ -60,6 +60,10 @@ that recommends outings from a user's saved places using tool calling.
 ## Writing
 
 - No em dashes in any writing: code comments, docs, commit messages.
+- Near-zero code comments. Only explain a non-obvious why (business logic,
+  algorithmic reasoning, or a technical constraint the code can't show).
+  No what, history, TODO, sync or maintenance notes, file descriptions, or
+  test explanations. If unsure, leave it out.
 - Commit messages carry no AI attribution (no Co-Authored-By trailers).
 
 ## Build log

@@ -23,7 +23,6 @@ class FakeApplicationDefault:
 
 @pytest.fixture(autouse=True)
 def fake_firebase(monkeypatch):
-    # config.py loads agent/.env for the whole session, so clear it per test.
     for name in ENV_VARS:
         monkeypatch.delenv(name, raising=False)
 
@@ -73,7 +72,7 @@ def test_relative_path_resolves_against_agent_dir(monkeypatch, tmp_path, fake_fi
     (tmp_path / "key.json").write_text("{}")
     monkeypatch.setattr(firebase_app, "AGENT_DIR", tmp_path)
     monkeypatch.setenv("FIREBASE_SERVICE_ACCOUNT_PATH", "./key.json")
-    monkeypatch.chdir(tmp_path.parent)  # a working-directory lookup would miss the file
+    monkeypatch.chdir(tmp_path.parent)
 
     firebase_app.get_firebase_app()
 
@@ -97,7 +96,7 @@ def test_adc_without_project_id_passes_no_options(fake_firebase):
 
 
 def test_invalid_json_error_hides_contents(monkeypatch, fake_firebase):
-    secret = '{"private_key": "SECRET_MARKER"'  # truncated, so invalid JSON
+    secret = '{"private_key": "SECRET_MARKER"'
     monkeypatch.setenv("FIREBASE_SERVICE_ACCOUNT_JSON", secret)
 
     with pytest.raises(ValueError) as excinfo:
