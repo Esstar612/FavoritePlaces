@@ -55,6 +55,15 @@ limits the file watcher to our code. Without it, the reloader also watches
 pytest
 ```
 
+## Smoke run
+
+One real request against the fixture store as `demo-user`. It needs `ANTHROPIC_API_KEY`, and it traces to LangSmith if `LANGSMITH_TRACING=true`:
+
+```bash
+python scripts/smoke.py
+python scripts/smoke.py "somewhere quiet to spend a rainy afternoon"
+```
+
 ## Layout
 
 ```

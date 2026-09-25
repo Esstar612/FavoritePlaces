@@ -187,3 +187,73 @@ A design for `POST /recommend`, with no code yet. It was approved with four chan
 - `pytest -v` (config in `agent/pyproject.toml`, tests in `agent/tests/`): 38 passed in 1.00s.
   That is 16 in `test_auth.py`, 14 in `test_places_store.py`, 7 in `test_firebase_app.py`, and 1 in `test_health.py`.
 - All of them ran with no Firebase credentials and no network: the Firestore client is mocked and `verify_id_token` is patched.
+
+### Part C: tools, graph, endpoint
+
+#### What we built
+- `graph/state.py`: `AgentContext` (uid and store, passed as the run context), `AgentState`, and the `RecommendationSet` returned by the final step
+- `tools/places_tools.py`: `search_places`, `get_place_details`, `plan_route`
+- `providers/factory.py`: `get_chat_model(provider)`
+- `graph/builder.py`: an agent and tools loop that ends in a structured `finalize` step
+- `run.py`: `run_recommendation`, the grounding check, tool-call collection, and one structured log line per run
+- `POST /recommend` in `api/app.py`
+- Tests with a scripted fake chat model: `tests/fakes.py`, `tests/test_agent_run.py`, `tests/test_recommend_endpoint.py`
+- `scripts/smoke.py`: one real run against the fixture store
+
+#### Decisions made
+- **Firestore-mode runs are not traced.** When `PLACES_STORE=firestore`, the agent run happens inside `langsmith.tracing_context(enabled=False)`, so real users' notes and summaries never reach LangSmith. Fixture mode stays fully traced. Redaction can be added later if firestore-mode traces are ever needed.
+  - Rejected for now: masking notes and summaries with LangSmith's `anonymizer` or `hide_inputs`/`hide_outputs` hooks. That was checked in `langsmith` 0.14.0 and would work, but it needs its own leak tests and has known gaps: the model's own text can quote notes, and error strings only pass through `anonymizer`.
+- **Tests never trace.** `tests/conftest.py` wraps every test in `tracing_context(enabled=False)`, which overrides `LANGSMITH_TRACING=true` from `.env`.
+- **The response field is `overview`, not `summary`.** In this project "summary" only ever means a place's cached AI summary.
+- **Grounding check, after each run.**
+  - Place IDs count as retrieved when they appear in the `places` rows or the route `order` returned by any tool.
+  - Recommendations the user owns and a tool returned are kept. Titles come from the store and order is renumbered.
+  - Owned but never retrieved: `ungrounded_place_ids`. Not owned: `rejected_place_ids`.
+  - Duplicate IDs are dropped.
+  - Both lists go into the run result and the run log. They are left out of the HTTP response.
+- **Run log.** Each run logs one JSON line with run ID, provider, model, store kind, tool calls with arguments, and the kept, ungrounded, and rejected IDs. It never includes the uid, the user's message, or place notes.
+- **`/recommend` request body forbids extra fields,** so a `uid` in the body gets a 422 instead of being silently ignored.
+- **Recursion limit of 12 graph steps** stops runaway tool loops.
+- **The graph and store are built once, on first use,** through FastAPI dependencies. Tests override those dependencies.
+- **Tests turn tracing off globally as well as per context.** `langsmith.configure(enabled=False)` covers TestClient's server thread, which doesn't inherit the test's `tracing_context`.
+- **Firestore-mode reasoning isn't reviewable in LangSmith.** Because those runs aren't traced, review comes only from the run log (tool calls and grounding lists). Fixture-mode runs keep full traces, including the model's reasoning.
+
+#### Problems hit and how we solved them
+- **The first Part C test run: 52 passed, 1 failed.**
+  - `test_recommend_returns_only_the_users_grounded_places` got a 422.
+  - Cause: the test overrode the store dependency with the `FixturePlacesStore` class itself. FastAPI read its `places_by_uid` constructor argument as a request parameter.
+  - Fixed by overriding with `lambda: FixturePlacesStore()`.
+- **Pydantic serializer warnings on `context`, 2 per agent run.**
+  - Cause: unsubscripted `ToolRuntime` takes `ContextT`'s default of `None` (`langgraph/prebuilt/tool_node.py:106`), so serializing the tool input expected `None` for `context`.
+  - Fixed by annotating the tools with `ToolRuntime[Any]`.
+  - Rejected: `ToolRuntime[AgentContext]`, which would make pydantic build a schema for the `PlacesStore` Protocol.
+- **`scripts/smoke.py` failed before the first model call** with "Anthropic authentication failed: no API key". `agent/.env` had empty `ANTHROPIC_API_KEY` and `LANGSMITH_API_KEY`, and LangSmith also returned 401 for the trace upload. The keys need to be filled in.
+
+#### Numbers measured
+- `pytest -v` (config in `agent/pyproject.toml`, tests in `agent/tests/`): **53 passed in 0.75s** with no warnings. That is 10 in `test_agent_run.py`, 5 in `test_recommend_endpoint.py`, and the 38 from Parts A and B.
+- `python scripts/smoke.py` (`agent/scripts/smoke.py`): one real run against the fixture store as `demo-user`, with default message "Plan me a relaxed Saturday morning: good coffee, then somewhere to walk." This is a single run, not a benchmark.
+  - Provider `anthropic`, model `claude-sonnet-5`, run ID `14f54c62-354d-4acd-afe4-f86257f8dbd2`
+  - Elapsed: 12.98 s
+  - Tokens: 7,934 input, 963 output, 8,897 total. Of the output, 18 were reasoning tokens. No cache reads or writes.
+  - 4 tool calls, in this order:
+    - `search_places` (cafe, min_rating 4)
+    - `search_places` (park, min_rating 4)
+    - `get_place_details` (both picks)
+    - `plan_route` (both picks)
+  - 2 recommendations: Blue Bottle Coffee, then Golden Gate Park
+  - 0 ungrounded, 0 rejected
+  - Trace recorded in LangSmith project `favorite-places-outing-agent`
+- The structured-output `finalize` step worked with `claude-sonnet-5`.
+
+#### Observations for Step 3 evals
+- The answer called `plan_route`'s straight-line distance "a short 8.6km drive". The tool gives a straight line, not a road distance.
+- The Golden Gate Park note says "Go on a weekday, weekends are packed". The request was for a Saturday, and the answer only said to arrive before the crowds. It didn't mention that the user's own note advises a weekday.
+- Both are candidates for an answer-faithfulness scorer.
+
+#### Resume claims moved forward
+- **Claim 1:** a tool-calling agent that recommends outings from saved places, working end to end with Anthropic. The OpenAI side of the provider interface comes in Step 2.
+- **Claim 2:** a FastAPI and LangGraph service, with fixture-mode runs traced in LangSmith. Evals in LangSmith come in Step 3.
+- **Claim 4 (partly):** every run logs its tool calls and grounding lists, and fixture-mode traces include the model's reasoning. Confidence escalation comes in Step 4.
+
+#### Case study
+One line: "The agent reads only the signed-in user's places. The uid comes from the verified token through LangGraph runtime context and never reaches the model or traces, and every recommendation is checked against what the tools actually returned."
