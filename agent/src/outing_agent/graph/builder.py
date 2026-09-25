@@ -20,7 +20,7 @@ the tools returned."""
 
 def build_graph(model: BaseChatModel):
     agent_model = model.bind_tools(TOOLS)
-    finalize_model = model.with_structured_output(RecommendationSet)
+    finalize_model = model.with_structured_output(RecommendationSet, method="function_calling")
 
     def agent(state: AgentState) -> dict:
         reply = agent_model.invoke([SystemMessage(SYSTEM_PROMPT), *state["messages"]])

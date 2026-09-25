@@ -260,3 +260,52 @@ A design for `POST /recommend`, with no code yet. It was approved with four chan
 
 #### Case study
 One line: "The agent reads only the signed-in user's places. The uid comes from the verified token through LangGraph runtime context and never reaches the model or traces, and every recommendation is checked against what the tools actually returned."
+
+---
+
+## 2026-09-25: Step 2, OpenAI behind the same provider interface
+
+### What we built
+- An OpenAI branch in `providers/factory.py`. `get_chat_model(provider)` returns `ChatAnthropic` or `ChatOpenAI` with the same token budget, timeout, and retries. The graph and tools are unchanged.
+- `LLM_PROVIDER` in `config.py` and `.env.example` (default `anthropic`, checked against `MODELS`), replacing the fixed `DEFAULT_PROVIDER`. `MAX_OUTPUT_TOKENS = 4096` and `REQUEST_TIMEOUT_S = 60` are shared by both providers.
+- `--provider` flag on `scripts/smoke.py`.
+- `tests/test_providers.py`. These run offline with dummy keys and check each provider's model settings, rejection of an unknown provider, and that the graph compiles with each real provider model.
+
+### Decisions made
+- **`finalize` uses `with_structured_output(..., method="function_calling")` for both providers.**
+  - In `langchain-openai` 1.6.6, `ChatOpenAI` defaults to `"json_schema"` (`chat_models/base.py:3862`), while `ChatAnthropic` defaults to `"function_calling"`.
+  - Being explicit makes both behave the same way, and avoids OpenAI strict-schema rules on the optional `suggested_time`. That rule is not yet confirmed to fail here.
+- **The output budget went from 2048 to 4096 tokens for both providers.** `gpt-6-sol` is a reasoning model, and its reasoning tokens count against `max_completion_tokens`. The same budget on both keeps the comparison fair.
+- **No flag forces the Responses API.** `langchain-openai` 1.6.6 switches to it automatically for `gpt-6*` models when tools are bound (`chat_models/base.py:2010-2013`).
+- **The provider is set per deployment through `LLM_PROVIDER`, not per request.** Step 3 evals call `get_chat_model` directly for each provider.
+
+### Numbers measured
+- `pytest -v` (config in `agent/pyproject.toml`, tests in `agent/tests/`): **59 passed in 2.07s**. That is the 53 from Step 1 plus 6 in `test_providers.py`.
+- `python scripts/smoke.py --provider openai` (`agent/scripts/smoke.py`): one real run against the fixture store as `demo-user`, using the same default message as the Step 1 run. This is a single run, not a benchmark, so it isn't a fair comparison with the Anthropic run.
+  - Provider `openai`, model `gpt-6-sol`, run ID `7fd4a5dd-a1ec-4410-b576-bb8a0487cc53`
+  - Elapsed: 23.72 s
+  - Tokens: 5,817 input (reported as 3,199 cache creation and 1,240 cache read), 658 output including 136 reasoning, 6,475 total
+  - 5 tool calls:
+    - `search_places` "coffee"
+    - `search_places` "walk"
+    - `get_place_details` (both picks)
+    - `plan_route` (both picks)
+    - `search_places` with no filters and limit 20
+  - 2 recommendations: Blue Bottle Coffee, then Golden Gate Park
+  - 0 ungrounded, 0 rejected
+  - Trace recorded in LangSmith
+- The same graph, tools, and `finalize` step worked unchanged with `gpt-6-sol`.
+
+### Observations for Step 3 evals
+- OpenAI sends every optional tool argument explicitly as `null`, and uses `limit: 12`. The tools handle both.
+- The last call listed every saved place with no filters. The rows still leave out notes, but a tool-use scorer could flag unfiltered searches.
+- Unlike the Step 1 Anthropic run, this answer passed on the "weekends are packed" note, and called 8.63 km the route tool's distance rather than a drive.
+
+### Problems hit and how we solved them
+None. Both the tests and the OpenAI smoke run passed on the first try.
+
+### Resume claims moved forward
+- **Claim 1:** complete. One provider interface (`get_chat_model`) runs the same tool-calling agent on Anthropic (`claude-sonnet-5`) and OpenAI (`gpt-6-sol`), next to the app's existing Gemini features.
+
+### Case study
+"The same LangGraph agent and tools run on Claude or GPT by changing one setting. The provider sits behind a single factory, and structured output is pinned to function calling so both return the same answer format."

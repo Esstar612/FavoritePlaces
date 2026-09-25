@@ -45,7 +45,7 @@ def get_places_store() -> PlacesStore:
 
 @lru_cache(maxsize=1)
 def get_agent() -> Agent:
-    provider = config.DEFAULT_PROVIDER
+    provider = config.LLM_PROVIDER
     return Agent(
         graph=build_graph(get_chat_model(provider)),
         provider=provider,

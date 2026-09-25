@@ -19,9 +19,10 @@ DEFAULT_MESSAGE = "Plan me a relaxed Saturday morning: good coffee, then somewhe
 def main() -> None:
     parser = argparse.ArgumentParser(description="One real agent run against the fixture store.")
     parser.add_argument("message", nargs="?", default=DEFAULT_MESSAGE)
+    parser.add_argument("--provider", choices=sorted(config.MODELS), default=config.LLM_PROVIDER)
     args = parser.parse_args()
 
-    provider = config.DEFAULT_PROVIDER
+    provider = args.provider
     model = config.MODELS[provider]
     graph = build_graph(get_chat_model(provider))
 

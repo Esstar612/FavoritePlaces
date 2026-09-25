@@ -5,12 +5,17 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-DEFAULT_PROVIDER = "anthropic"
-
 MODELS = {
     "anthropic": "claude-sonnet-5",
     "openai": "gpt-6-sol",
 }
+
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "").strip() or "anthropic"
+if LLM_PROVIDER not in MODELS:
+    raise ValueError(f"LLM_PROVIDER must be one of {sorted(MODELS)}, got {LLM_PROVIDER!r}")
+
+MAX_OUTPUT_TOKENS = 4096
+REQUEST_TIMEOUT_S = 60
 
 RANDOM_SEED = 42
 

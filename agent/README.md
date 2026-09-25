@@ -62,7 +62,10 @@ One real request against the fixture store as `demo-user`. It needs `ANTHROPIC_A
 ```bash
 python scripts/smoke.py
 python scripts/smoke.py "somewhere quiet to spend a rainy afternoon"
+python scripts/smoke.py --provider openai
 ```
+
+The OpenAI run needs `OPENAI_API_KEY`. `LLM_PROVIDER` in `.env` picks the provider the service uses; it defaults to `anthropic`.
 
 ## Layout
 
