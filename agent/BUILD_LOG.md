@@ -755,6 +755,13 @@ None. Both the tests and the OpenAI smoke run passed on the first try.
   - **Written and verified:**
     - `thresholds --write` printed the same table (same random seed) and wrote `evals/thresholds.json`, whose values match it.
     - The holdout was rerun against the saved thresholds (`outing-agent-holdout-anthropic-eab99af3`, `outing-agent-holdout-openai-58ff1551`): every scorer 1.000 for both providers, every threshold and gate passed.
+- **2026-09-26: `sync_dataset` no longer reports unchanged examples as updated.**
+  - **Cause:** a new `--dry-run` option, which prints each field that would change and writes nothing, showed that LangSmith adds `metadata.dataset_split: ['base']` to every example. It was the only difference on all 27 main examples.
+  - **Fix:** metadata is compared only on the keys the cases set. Inputs and outputs are still compared in full, so a reference key removed from the cases still triggers an update.
+  - **Verified:**
+    - `pytest`: 167 passed, including 6 new tests in `tests/test_sync_dataset.py`.
+    - `sync_dataset --dry-run`: `outing-agent-v1` 27 cases, 0 created, 0 updated, 0 deleted.
+    - `--cases holdout --dry-run`: `outing-agent-holdout-v1` 3 cases, 0 created, 0 updated, 0 deleted.
 
 #### Known limitations
 - `langsmith` `Client.list_runs()`, used by `evals/experiments.py`, is deprecated and will be removed after **Jan 31, 2027**. The warning points to `client.runs.query()`, which takes project IDs and a time window rather than a project name. Migrate before that date.
