@@ -88,11 +88,14 @@ def get_place_details(runtime: ToolRuntime[Any], place_ids: list[str]) -> str:
 
     Returns notes, the cached summary (why they liked it, tips, best time to
     go), visit date, and coordinates. IDs that are not the user's saved places
-    come back in not_found. Only the first 5 IDs are used.
+    come back in not_found. Only the first 5 IDs are used; any beyond that
+    come back in truncated.
     """
     by_id = {p.id: p for p in _places(runtime)}
+    unique_ids = list(dict.fromkeys(place_ids))
+    requested, truncated = unique_ids[:MAX_DETAIL_IDS], unique_ids[MAX_DETAIL_IDS:]
     found, not_found = [], []
-    for place_id in list(dict.fromkeys(place_ids))[:MAX_DETAIL_IDS]:
+    for place_id in requested:
         place = by_id.get(place_id)
         if place is None:
             not_found.append(place_id)
@@ -107,29 +110,35 @@ def get_place_details(runtime: ToolRuntime[Any], place_ids: list[str]) -> str:
                 "lng": place.lng,
             }
         )
-    return json.dumps({"places": found, "not_found": not_found})
+    return json.dumps({"places": found, "not_found": not_found, "truncated": truncated})
 
 
 @tool
-def plan_route(runtime: ToolRuntime[Any], place_ids: list[str]) -> str:
-    """Order 2 to 5 of the user's saved places into a short visiting route.
+def plan_route(runtime: ToolRuntime[Any], place_ids: list[str], optimize: bool = False) -> str:
+    """Plan a route through 2 to 5 of the user's saved places.
 
-    Starts at the first ID given, then always goes to the nearest place not
-    yet visited. Returns the order, the straight-line distance of each leg in
-    km, and the total. IDs that are not the user's saved places come back in
-    not_found.
+    Stops are visited in the order given, so pass them in the order the user
+    asked for. Set optimize to true only when the user leaves the order open:
+    the route then starts at the first ID and always goes to the nearest place
+    not yet visited. One call returns every leg with its straight-line distance
+    in km, plus the total, so there is no need to call it per leg. Only the
+    first 5 IDs are used; any beyond that come back in truncated. IDs that are
+    not the user's saved places come back in not_found.
     """
     by_id = {p.id: p for p in _places(runtime)}
-    requested = list(dict.fromkeys(place_ids))[:MAX_ROUTE_IDS]
+    unique_ids = list(dict.fromkeys(place_ids))
+    requested, truncated = unique_ids[:MAX_ROUTE_IDS], unique_ids[MAX_ROUTE_IDS:]
     stops = [by_id[pid] for pid in requested if pid in by_id]
     not_found = [pid for pid in requested if pid not in by_id]
     if len(stops) < 2:
-        return json.dumps({"error": "need at least 2 saved place IDs", "not_found": not_found})
-    route, remaining = [stops[0]], stops[1:]
-    while remaining:
-        nearest = min(remaining, key=lambda p: _haversine_km(route[-1], p))
-        route.append(nearest)
-        remaining.remove(nearest)
+        return json.dumps(
+            {
+                "error": "need at least 2 saved place IDs",
+                "not_found": not_found,
+                "truncated": truncated,
+            }
+        )
+    route = _nearest_neighbor_order(stops) if optimize else stops
     legs = [
         {"from": a.id, "to": b.id, "km": round(_haversine_km(a, b), 2)}
         for a, b in zip(route, route[1:])
@@ -137,11 +146,22 @@ def plan_route(runtime: ToolRuntime[Any], place_ids: list[str]) -> str:
     return json.dumps(
         {
             "order": [p.id for p in route],
+            "optimized": optimize,
             "legs": legs,
             "total_km": round(sum(leg["km"] for leg in legs), 2),
             "not_found": not_found,
+            "truncated": truncated,
         }
     )
+
+
+def _nearest_neighbor_order(stops: list[Place]) -> list[Place]:
+    route, remaining = [stops[0]], stops[1:]
+    while remaining:
+        nearest = min(remaining, key=lambda p: _haversine_km(route[-1], p))
+        route.append(nearest)
+        remaining.remove(nearest)
+    return route
 
 
 def _haversine_km(a: Place, b: Place) -> float:

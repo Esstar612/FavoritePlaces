@@ -2,6 +2,7 @@ import json
 import logging
 import uuid
 from contextlib import nullcontext
+from typing import Literal
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
 from langsmith import tracing_context
@@ -13,12 +14,13 @@ from outing_agent.places.store import PlacesStore, RequestScopedPlacesStore
 
 log = logging.getLogger(__name__)
 
-RECURSION_LIMIT = 12
+RECURSION_LIMIT = 21
 
 
 class RecommendedPlace(BaseModel):
     place_id: str
     title: str
+    category: str
     order: int
     reason: str
     suggested_time: str | None = None
@@ -27,6 +29,7 @@ class RecommendedPlace(BaseModel):
 class ToolCall(BaseModel):
     name: str
     args: dict
+    source: Literal["model", "graph"] = "model"
 
 
 class RecommendationResult(BaseModel):
@@ -34,10 +37,14 @@ class RecommendationResult(BaseModel):
     provider: str
     model: str
     overview: str
+    kind: str | None
     recommendations: list[RecommendedPlace]
     tool_calls: list[ToolCall]
     ungrounded_place_ids: list[str]
     rejected_place_ids: list[str]
+    draft_place_ids: list[str]
+    draft_grounded_place_ids: list[str]
+    fallback_removed_place_ids: list[str]
 
 
 def run_recommendation(
@@ -61,25 +68,38 @@ def run_recommendation(
     tracing = tracing_context(enabled=False) if store_kind == "firestore" else nullcontext()
     with tracing:
         state = graph.invoke(
-            {"messages": [HumanMessage(message)], "recommendation_set": None},
+            {
+                "messages": [HumanMessage(message)],
+                "recommendation_set": None,
+                "draft_set": None,
+                "fallback_calls": [],
+                "fallback_removed_place_ids": [],
+            },
             config=config,
             context=AgentContext(uid=uid, store=scoped_store),
         )
 
     messages = state["messages"]
     owned = {place.id: place for place in scoped_store.list_places(uid)}
-    kept, ungrounded, rejected = ground_recommendations(
-        state.get("recommendation_set"), owned, retrieved_place_ids(messages)
-    )
+    retrieved = retrieved_place_ids(messages)
+    final_set = state.get("recommendation_set")
+    draft_set = state.get("draft_set") or final_set
+    kept, ungrounded, rejected = ground_recommendations(final_set, owned, retrieved)
+    draft_kept, _, _ = ground_recommendations(draft_set, owned, retrieved)
+    draft_recs = sorted(draft_set.recommendations, key=lambda r: r.order) if draft_set else []
     result = RecommendationResult(
         run_id=run_id,
         provider=provider,
         model=model,
-        overview=state["recommendation_set"].overview if state.get("recommendation_set") else "",
+        overview=final_set.overview if final_set else "",
+        kind=final_set.kind if final_set else None,
         recommendations=kept,
-        tool_calls=collect_tool_calls(messages),
+        tool_calls=collect_tool_calls(messages, state.get("fallback_calls", [])),
         ungrounded_place_ids=ungrounded,
         rejected_place_ids=rejected,
+        draft_place_ids=[rec.place_id for rec in draft_recs],
+        draft_grounded_place_ids=[rec.place_id for rec in draft_kept],
+        fallback_removed_place_ids=state.get("fallback_removed_place_ids", []),
     )
     _log_run(result, store_kind)
     return result
@@ -128,6 +148,7 @@ def ground_recommendations(
                 RecommendedPlace(
                     place_id=rec.place_id,
                     title=owned[rec.place_id].title,
+                    category=owned[rec.place_id].category,
                     order=len(kept) + 1,
                     reason=rec.reason,
                     suggested_time=rec.suggested_time,
@@ -136,12 +157,17 @@ def ground_recommendations(
     return kept, ungrounded, rejected
 
 
-def collect_tool_calls(messages: list[AnyMessage]) -> list[ToolCall]:
+def collect_tool_calls(messages: list[AnyMessage], fallback_calls: list[dict]) -> list[ToolCall]:
+    answered = {message.tool_call_id for message in messages if isinstance(message, ToolMessage)}
     return [
-        ToolCall(name=call["name"], args=call["args"])
-        for message in messages
-        if isinstance(message, AIMessage)
-        for call in message.tool_calls
+        *[
+            ToolCall(name=call["name"], args=call["args"])
+            for message in messages
+            if isinstance(message, AIMessage)
+            for call in message.tool_calls
+            if call["id"] in answered
+        ],
+        *[ToolCall(name=call["name"], args=call["args"], source="graph") for call in fallback_calls],
     ]
 
 
@@ -155,9 +181,13 @@ def _log_run(result: RecommendationResult, store_kind: str) -> None:
                 "model": result.model,
                 "places_store": store_kind,
                 "tool_calls": [call.model_dump() for call in result.tool_calls],
+                "kind": result.kind,
                 "recommended_place_ids": [rec.place_id for rec in result.recommendations],
                 "ungrounded_place_ids": result.ungrounded_place_ids,
                 "rejected_place_ids": result.rejected_place_ids,
+                "draft_place_ids": result.draft_place_ids,
+                "draft_grounded_place_ids": result.draft_grounded_place_ids,
+                "fallback_removed_place_ids": result.fallback_removed_place_ids,
             }
         )
     )
