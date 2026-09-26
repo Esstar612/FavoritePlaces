@@ -14,3 +14,5 @@ Then report, ranked by severity:
 5. Missing tests.
 
 Only report real issues. If the plan is sound, say so plainly. Don't invent nitpicks to seem thorough. No em dashes.
+
+Finish with a verdict: approve, approve with changes, or send back. Then write one paste-ready message to the building session that lists only the required changes, numbered, in plain language. If a change needs my decision, give me the options and your recommendation above the message. Keep the whole review under 400 words unless there are correctness bugs that need more.
