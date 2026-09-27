@@ -2,18 +2,18 @@
   "confidence": 0.99,
   "case_set": "main",
   "experiments": {
-    "anthropic": "outing-agent-main-anthropic-058737f5",
-    "openai": "outing-agent-main-openai-fdd08625"
+    "anthropic": "outing-agent-main-anthropic-648ff8bd",
+    "openai": "outing-agent-main-openai-81389cb3"
   },
   "providers": {
     "anthropic": {
       "covers_request": 0.9,
-      "details_before_recommending": 0.9,
+      "details_before_recommending": 0.8,
       "empty_when_nothing_fits": 0.9,
       "expected_recall": 0.85,
-      "required_tools_used": 0.9,
+      "required_tools_used": 0.85,
       "respects_sequence": 0.9,
-      "route_when_multi_stop": 0.8,
+      "route_when_multi_stop": 0.7,
       "tool_call_budget": 0.85
     },
     "openai": {
@@ -24,7 +24,7 @@
       "required_tools_used": 0.9,
       "respects_sequence": 0.9,
       "route_when_multi_stop": 0.9,
-      "tool_call_budget": 0.85
+      "tool_call_budget": 0.8
     }
   }
 }

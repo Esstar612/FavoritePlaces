@@ -861,3 +861,107 @@ None. Both the tests and the OpenAI smoke run passed on the first try.
 
 ### Case study
 Evals gate every deploy: a push to `main` runs 162 scored agent runs across Claude and GPT, and the Cloud Run deploy only happens if every gate and per-provider threshold passes.
+
+---
+
+## 2026-09-27: Step 4, confidence escalation (in progress)
+
+### What we built
+- **Confidence and a clarifying question.** `finalize` returns `confidence` (0 to 1) and a `clarifying_question`.
+  - Below the provider's threshold, the graph escalates: no fallback, no places, an empty overview, and the question in the response.
+  - The reported confidence is always the draft's, the value the decision used.
+- **Per-provider thresholds** in `src/outing_agent/confidence_thresholds.json`, written by `evals/confidence_sweep.py --write`. A provider missing from the file never escalates. `config.CONFIDENCE_THRESHOLD` was removed.
+- **One clarification round.** `POST /recommend` takes `message` or a `clarification` object (`original_message`, `question`, `answer`, each up to 500 characters). The server stays stateless, and a clarified request never escalates again.
+- **Eval cases:**
+  - Every case gained `expects_clarification`.
+  - The main set has 32 cases: 4 vague, and 2 round trips, one of them a two-stop day plan.
+  - The holdout has 6 cases, 2 of them vague.
+- **Scorers:** report-only `asks_when_vague` and `no_needless_question`, based on `escalated`. `empty_when_nothing_fits` now scores 0 on an escalated run.
+- **CI:** `pytest` and `container` run on every PR, and are now required checks on `main`.
+
+### Decisions made
+- **Confidence is reported by the model and calibrated on eval data,** not computed from signals or from agreement between repeated runs. Computing it from signals would have missed meaning, and repeated runs would have multiplied cost.
+- **What makes a request clear:** it says which saved places would fit, through a kind of place, an activity, or a quality that ranks them.
+  - A time alone ("this weekend", "Saturday") isn't enough, and neither is "nice".
+  - The same rule is in the finalize prompt and in the `confidence` field description, so they never contradict each other.
+  - `memorable-evening` stays a clear case, because "memorable" ranks the saved places.
+- **Whether to ask is decided by the threshold, not the model.**
+- **A clarified request is sent as one user message** combining the original request, the question and the answer. There's no assistant turn, because the question text comes from the client.
+- **The threshold rule was fixed before seeing any data:**
+  - Pick the highest share of vague runs asked, with needless questions at or below 0.05 of clear runs.
+  - Require at least 0.5 of vague runs asked.
+  - Ties go to the lower threshold.
+  - 0.05 and 0.5 are product choices.
+- **The holdout runs before the merge,** because merging turns escalation on in production.
+- **Deferred:** Anthropic identity federation instead of an API key, and a live test that forces the fallback.
+
+### Numbers measured
+- **Run A** (CI run 36312308423, the Step 4 stack merge, no threshold yet):
+
+  | Job | Result |
+  |---|---|
+  | `pytest` | 221 passed, 24s |
+  | `container` | 35s |
+  | evals | 32 cases x 3 x 2 = 192 agent runs, 10m56s |
+  | deploy | 1m32s, revision `favorite-places-agent-00005-fj4` |
+
+  All gates and thresholds passed. Experiments `outing-agent-main-anthropic-648ff8bd` and `outing-agent-main-openai-81389cb3`.
+
+  | Scorer | Claude | GPT |
+  |---|---|---|
+  | covers_request | 1.000 (n=36) | 1.000 (n=36) |
+  | details_before_recommending | 0.958 (n=71) | 1.000 (n=83) |
+  | empty_when_nothing_fits | 1.000 (n=12) | 1.000 (n=12) |
+  | expected_recall | 0.962 (n=66) | 0.985 (n=66) |
+  | fallback_rate (report only) | 0.031 (n=96) | 0.000 (n=96) |
+  | required_tools_used | 0.963 (n=81) | 1.000 (n=81) |
+  | respects_sequence | 1.000 (n=33) | 1.000 (n=33) |
+  | route_when_multi_stop | 0.929 (n=42) | 1.000 (n=42) |
+  | tool_call_budget | 0.969 (n=96) | 0.948 (n=96) |
+  | asks_when_vague (report only) | 0.000 (n=12) | 0.000 (n=12) |
+  | no_needless_question (report only) | 1.000 (n=84) | 1.000 (n=84) |
+
+  `grounded` and `no_forbidden` were 1.000 for both providers. The two escalation scorers read 0.000 and 1.000 because no threshold existed yet.
+- **Confidence sweep on Run A** (12 vague and 78 clear first-round runs per provider; asked_vague / needless):
+  - **Claude:** 0.15 → 0.750 / 0.000; 0.20 to 0.30 → 0.917 / 0.000; **0.35 → 1.000 / 0.000 (picked)**; 0.55 → 1.000 / 0.013; 0.95 → 1.000 / 0.808.
+  - **GPT:** up to 0.20 → 0.000 / 0.000; 0.25 to 0.50 → 0.083 / 0.000; **0.55 → 1.000 / 0.000 (picked)**; 0.95 → 1.000 / 0.064.
+  - These figures are **in-sample:** the thresholds were picked on these runs.
+- **Holdout, out of sample** (local run before the merge, with the new thresholds; 6 cases x 3 x 2 = 36 agent runs; experiments `outing-agent-holdout-anthropic-de1a2901` and `outing-agent-holdout-openai-d4faea68`):
+
+  | Provider | asks_when_vague (n=6) | no_needless_question (n=12) |
+  |---|---|---|
+  | Claude | **0.833** | 1.000 |
+  | GPT | **1.000** | 1.000 |
+
+  All gates and thresholds passed on the holdout. These are the figures measured on cases the thresholds weren't picked from.
+
+- **Gate thresholds recomputed from Run A** (`thresholds.py --confidence 0.99 --write`, stacked with the escalation PR so one CI run checks both):
+
+  | Scorer | Claude (old → new) | GPT (old → new) |
+  |---|---|---|
+  | details_before_recommending | 0.90 → 0.80 | 0.90 → 0.90 |
+  | required_tools_used | 0.90 → 0.85 | 0.90 → 0.90 |
+  | route_when_multi_stop | 0.80 → 0.70 | 0.90 → 0.90 |
+  | tool_call_budget | 0.85 → 0.85 | 0.85 → 0.80 |
+
+  - Every other threshold is unchanged. The source intervals: Claude details [0.826, 1.000], required tools [0.852, 1.000], route [0.714, 1.000]; GPT budget [0.844, 1.000].
+  - **Why Run A and not a new run:** it used the final prompt. No clear run fell below the new confidence thresholds, so clear runs behave the same with escalation on.
+  - **The one difference:** the 12 vague runs per provider were scored by `details_before_recommending` in Run A. With escalation on they return no places and aren't scored.
+
+### Observations
+- **Model confidence separates vague from clear requests well for both providers.** Neither asked needlessly on any clear run, in-sample or on the holdout.
+- **GPT's vague runs cluster just under its 0.55 threshold,** consistent with the rubric's "about 0.5". The fixed tie rule chose 0.55, even though every threshold from 0.55 to 0.90 scored the same. The holdout's 6 of 6 suggests the thin margin holds.
+- **Claude missed 1 of 6 held-out vague runs.** That's too few to justify changing the rule.
+- **Every recomputed threshold got looser or stayed the same.**
+  - Run A's means are close to the fifth baseline's, but its run-to-run spread is wider, and each threshold is a lower bound from a single run.
+  - **Claude's route threshold of 0.70 is a weak regression check.** The fallback still guarantees a route for every itinerary, so users are protected.
+  - Basing thresholds on several runs of the same prompt would tighten them. That's a later change.
+
+### Problems hit and how we solved them
+- **Rebasing PR 3 onto the amended PR 2 first replayed PR 2's old commit and conflicted.** `git rebase --onto` replayed only PR 3's own commit.
+- **Dropbox again changed files mid-operation during a branch switch.** Retrying on a clean tree worked.
+
+### Next
+- Merge PR 6 and PR 7 as one stack: Run B, the first CI run with escalation on, gated by the recomputed thresholds.
+- Later: let `thresholds.py` pool several experiments of the same prompt.
+- A live check with a guest account: a vague request, then the clarification round trip, then the `recommendation_run` log.

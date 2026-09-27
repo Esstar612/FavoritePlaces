@@ -124,6 +124,26 @@ production, because runs there read real users' notes.
 | `RECOMMEND_LIMIT_GLOBAL_PER_HOUR` | `200` | product choice, not a measured figure |
 | `CHECK_REVOKED` | `false` | also reject revoked sessions |
 
+### Escalation
+
+Every answer carries `confidence` (0 to 1: how clearly the request says which
+saved places would fit) and, when the service asks instead of answering, a
+`clarifying_question`. The service asks when confidence is below the
+provider's threshold in `src/outing_agent/confidence_thresholds.json`. A
+provider missing from that file never escalates.
+
+`POST /recommend` takes either `{"message": ...}` or
+`{"clarification": {"original_message": ..., "question": ..., "answer": ...}}`,
+each field up to 500 characters. A clarified request never asks again, so
+there is at most one question per request.
+
+Thresholds are picked from a full eval run with
+`python -m evals.confidence_sweep --experiment anthropic=... --experiment openai=... --write`.
+The rule takes the threshold that asks on the most vague requests while
+asking needlessly on at most 5% of clear ones, and requires asking on at least
+half of the vague ones. The 5% and the half are product choices, not measured
+figures.
+
 ### Guest access and spend caps
 
 Guests (Firebase anonymous sign-in) have full access, including
