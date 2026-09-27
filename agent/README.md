@@ -123,6 +123,8 @@ production, because runs there read real users' notes.
 | `RECOMMEND_LIMIT_PER_USER_PER_HOUR` | `20` | product choice, not a measured figure |
 | `RECOMMEND_LIMIT_GLOBAL_PER_HOUR` | `200` | product choice, not a measured figure |
 | `CHECK_REVOKED` | `false` | also reject revoked sessions |
+| `CORS_ORIGINS` | the two Firebase Hosting origins | comma-separated origins the web app may call from |
+| `CORS_ORIGIN_REGEX` | `http://localhost` or `127.0.0.1`, any port | for `flutter run -d chrome` |
 
 ### Escalation
 

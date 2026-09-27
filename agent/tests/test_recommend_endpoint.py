@@ -127,3 +127,42 @@ def test_recommend_rejects_bad_clarification_requests(client, body):
     response = client.post("/recommend", json=body)
 
     assert response.status_code == 422
+
+
+def _preflight(client, origin):
+    return client.options(
+        "/recommend",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://favorite-places-app-94adb.web.app",
+        "https://favorite-places-app-94adb.firebaseapp.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:8080",
+    ],
+)
+def test_preflight_from_the_app_is_allowed(client, origin):
+    response = _preflight(client, origin)
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+    assert "access-control-allow-credentials" not in response.headers
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["https://evil.example", "http://localhost.evil.example", "https://localhost:5173"],
+)
+def test_preflight_from_other_origins_is_refused(client, origin):
+    response = _preflight(client, origin)
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers

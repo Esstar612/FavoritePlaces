@@ -5,6 +5,7 @@ from functools import lru_cache
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from outing_agent import config
@@ -31,6 +32,13 @@ def _configure_logging() -> None:
 
 _configure_logging()
 app = FastAPI(title="Favorite Places Outing Agent")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.CORS_ORIGINS,
+    allow_origin_regex=config.CORS_ORIGIN_REGEX,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 
 @dataclass(frozen=True)

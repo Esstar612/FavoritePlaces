@@ -48,3 +48,20 @@ def _positive_int(name: str, default: int) -> int:
 
 RECOMMEND_LIMIT_PER_USER_PER_HOUR = _positive_int("RECOMMEND_LIMIT_PER_USER_PER_HOUR", 20)
 RECOMMEND_LIMIT_GLOBAL_PER_HOUR = _positive_int("RECOMMEND_LIMIT_GLOBAL_PER_HOUR", 200)
+
+
+def _csv(name: str, default: list[str]) -> list[str]:
+    raw = os.environ.get(name, "").strip()
+    return [item.strip() for item in raw.split(",") if item.strip()] if raw else default
+
+
+CORS_ORIGINS = _csv(
+    "CORS_ORIGINS",
+    [
+        "https://favorite-places-app-94adb.web.app",
+        "https://favorite-places-app-94adb.firebaseapp.com",
+    ],
+)
+CORS_ORIGIN_REGEX = (
+    os.environ.get("CORS_ORIGIN_REGEX", "").strip() or r"http://(localhost|127\.0\.0\.1)(:\d+)?"
+)
