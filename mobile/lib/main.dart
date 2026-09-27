@@ -14,7 +14,11 @@ const _seedColor = Color.fromARGB(255, 102, 6, 247);
 final darkColorScheme = ColorScheme.fromSeed(
   brightness: Brightness.dark,
   seedColor: _seedColor,
-  surface: const Color.fromARGB(255, 56, 49, 66),
+  surface: const Color(0xFF1D1A22),
+  surfaceContainerLow: const Color(0xFF221F27),
+  surfaceContainer: const Color(0xFF28242E),
+  surfaceContainerHigh: const Color(0xFF322D39),
+  surfaceContainerHighest: const Color(0xFF3D3745),
 );
 
 final lightColorScheme = ColorScheme.fromSeed(
@@ -25,18 +29,44 @@ final lightColorScheme = ColorScheme.fromSeed(
 /// Kept for backwards compatibility with existing references.
 final colorScheme = darkColorScheme;
 
-ThemeData _themeFor(ColorScheme scheme) => ThemeData(
-      useMaterial3: true,
-      // Per-scheme, not shared — a dark surface on the light scheme would be
-      // unreadable.
-      scaffoldBackgroundColor: scheme.surface,
-      colorScheme: scheme,
-      textTheme: const TextTheme(
-        titleSmall: TextStyle(fontWeight: FontWeight.bold),
-        titleMedium: TextStyle(fontWeight: FontWeight.bold),
-        titleLarge: TextStyle(fontWeight: FontWeight.bold),
-      ),
-    );
+ThemeData _themeFor(ColorScheme scheme) {
+  final base = ThemeData(
+    useMaterial3: true,
+    // Per-scheme, not shared — a dark surface on the light scheme would be
+    // unreadable.
+    scaffoldBackgroundColor: scheme.surface,
+    colorScheme: scheme,
+    appBarTheme: const AppBarTheme(centerTitle: false),
+    textTheme: const TextTheme(
+      titleSmall: TextStyle(fontWeight: FontWeight.bold),
+      titleMedium: TextStyle(fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(fontWeight: FontWeight.bold),
+    ),
+  );
+  return base.copyWith(textTheme: _untracked(base.textTheme));
+}
+
+// The designs set no letter spacing; Material 3's default tracking makes lines wrap sooner.
+TextTheme _untracked(TextTheme t) {
+  TextStyle? zero(TextStyle? style) => style?.copyWith(letterSpacing: 0);
+  return TextTheme(
+    displayLarge: zero(t.displayLarge),
+    displayMedium: zero(t.displayMedium),
+    displaySmall: zero(t.displaySmall),
+    headlineLarge: zero(t.headlineLarge),
+    headlineMedium: zero(t.headlineMedium),
+    headlineSmall: zero(t.headlineSmall),
+    titleLarge: zero(t.titleLarge),
+    titleMedium: zero(t.titleMedium),
+    titleSmall: zero(t.titleSmall),
+    bodyLarge: zero(t.bodyLarge),
+    bodyMedium: zero(t.bodyMedium),
+    bodySmall: zero(t.bodySmall),
+    labelLarge: zero(t.labelLarge),
+    labelMedium: zero(t.labelMedium),
+    labelSmall: zero(t.labelSmall),
+  );
+}
 
 void main() async {
   // Flutter + Firebase both need this before runApp

@@ -18,11 +18,9 @@ class WebPhoneFrame extends StatelessWidget {
   /// Under this width there's no room for a frame, and none needed.
   static const double _breakpoint = 800;
 
-  /// Roughly a modern handset: 9:19.5, capped so it doesn't dominate a large
-  /// monitor.
-  static const double _maxWidth = 412;
-  static const double _maxHeight = 892;
-  static const double _aspect = 19.5 / 9;
+  /// The phone size the screens are designed at.
+  static const double _phoneWidth = 412;
+  static const double _phoneHeight = 892;
   static const double _cornerRadius = 44;
   static const double _bezel = 10;
 
@@ -32,10 +30,9 @@ class WebPhoneFrame extends StatelessWidget {
 
     if (media.size.width < _breakpoint) return child;
 
-    // Fit the tallest phone the window allows, then derive width from it.
-    final available = media.size.height - 48;
-    final height = available.clamp(480.0, _maxHeight);
-    final width = (height / _aspect).clamp(320.0, _maxWidth);
+    // Lay out at the design size, then scale the whole phone to the window, so
+    // shorter windows shrink type and spacing together instead of squeezing layouts.
+    final scale = ((media.size.height - 48) / _phoneHeight).clamp(0.5, 1.0);
 
     final scheme = Theme.of(context).colorScheme;
 
@@ -66,18 +63,24 @@ class WebPhoneFrame extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(_cornerRadius - _bezel),
             child: SizedBox(
-              width: width,
-              height: height,
-              // The app must believe it is phone-sized, or it lays out against
-              // the full window and the frame just crops it.
-              child: MediaQuery(
-                data: media.copyWith(
-                  size: Size(width, height),
-                  viewPadding: EdgeInsets.zero,
-                  padding: EdgeInsets.zero,
-                  viewInsets: EdgeInsets.zero,
+              width: _phoneWidth * scale,
+              height: _phoneHeight * scale,
+              child: FittedBox(
+                child: SizedBox(
+                  width: _phoneWidth,
+                  height: _phoneHeight,
+                  // The app must believe it is phone-sized, or it lays out against
+                  // the full window and the frame just crops it.
+                  child: MediaQuery(
+                    data: media.copyWith(
+                      size: const Size(_phoneWidth, _phoneHeight),
+                      viewPadding: EdgeInsets.zero,
+                      padding: EdgeInsets.zero,
+                      viewInsets: EdgeInsets.zero,
+                    ),
+                    child: child,
+                  ),
                 ),
-                child: child,
               ),
             ),
           ),
