@@ -1,5 +1,6 @@
 import json
 import math
+from itertools import pairwise
 from typing import Any
 
 from langchain_core.tools import tool
@@ -141,7 +142,7 @@ def plan_route(runtime: ToolRuntime[Any], place_ids: list[str], optimize: bool =
     route = _nearest_neighbor_order(stops) if optimize else stops
     legs = [
         {"from": a.id, "to": b.id, "km": round(_haversine_km(a, b), 2)}
-        for a, b in zip(route, route[1:])
+        for a, b in pairwise(route)
     ]
     return json.dumps(
         {

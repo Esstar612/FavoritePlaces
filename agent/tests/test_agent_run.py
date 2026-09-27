@@ -1,5 +1,6 @@
 import json
 from contextlib import contextmanager
+from itertools import pairwise
 from types import SimpleNamespace
 
 import pytest
@@ -141,7 +142,7 @@ def test_route_keeps_the_given_order_by_default():
     payload = json.loads(plan_route.func(runtime=_runtime(), place_ids=ids))
 
     assert payload["order"] == ids
-    assert [(leg["from"], leg["to"]) for leg in payload["legs"]] == list(zip(ids, ids[1:]))
+    assert [(leg["from"], leg["to"]) for leg in payload["legs"]] == list(pairwise(ids))
     assert payload["optimized"] is False
     assert payload["truncated"] == []
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from outing_agent.places.models import Place
 
@@ -9,7 +9,7 @@ SPARSE_UID = "sparse-user"
 
 
 def _date(day: int) -> datetime:
-    return datetime(2026, 8, day, 12, 0, tzinfo=timezone.utc)
+    return datetime(2026, 8, day, 12, 0, tzinfo=UTC)
 
 
 _DEMO_PLACES = [

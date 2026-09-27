@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
@@ -11,9 +13,9 @@ APP_SENTINEL = object()
 @pytest.fixture
 def verify(monkeypatch):
     class Stub:
-        result = {"uid": "user-123"}
+        result: ClassVar[dict] = {"uid": "user-123"}
         error = None
-        calls = []
+        calls: ClassVar[list] = []
 
     def fake_verify(token, app=None, check_revoked=False, clock_skew_seconds=0):
         Stub.calls.append({"token": token, "app": app, "check_revoked": check_revoked})
