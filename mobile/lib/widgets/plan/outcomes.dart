@@ -154,31 +154,3 @@ class PlanErrorView extends ConsumerWidget {
     );
   }
 }
-
-class PlanResultsPreview extends ConsumerWidget {
-  const PlanResultsPreview({super.key, required this.state});
-
-  final PlanResults state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final places = {for (final p in ref.watch(userPlacesProvider)) p.id: p};
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      children: [
-        PlanYouAsked(request: state.request),
-        const SizedBox(height: 16),
-        Text(state.result.overview, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        for (final stop in state.result.stops)
-          Card(
-            child: ListTile(
-              leading: CircleAvatar(child: Text('${stop.order}')),
-              title: Text(places[stop.placeId]?.title ?? stop.placeId),
-              subtitle: Text(stop.reason.isEmpty ? 'Your starting point' : stop.reason),
-            ),
-          ),
-      ],
-    );
-  }
-}

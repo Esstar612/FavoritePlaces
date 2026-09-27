@@ -6,6 +6,7 @@ import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/widgets/plan/asking.dart';
 import 'package:favorite_places/widgets/plan/compose.dart';
 import 'package:favorite_places/widgets/plan/outcomes.dart';
+import 'package:favorite_places/widgets/plan/results.dart';
 import 'package:favorite_places/widgets/plan/thinking.dart';
 
 class PlanScreen extends ConsumerWidget {
@@ -15,6 +16,7 @@ class PlanScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(planProvider);
     final count = ref.watch(userPlacesProvider).length;
+    final stops = state is PlanResults ? state.result.stops.length : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -22,9 +24,16 @@ class PlanScreen extends ConsumerWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Plan an outing',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
-            Text('From your $count saved places', style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              stops == null ? 'Plan an outing' : 'Your outing',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+            ),
+            Text(
+              stops == null
+                  ? 'From your $count saved places'
+                  : '$stops ${stops == 1 ? 'stop' : 'stops'} from your saved places',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
         actions: [
@@ -43,7 +52,7 @@ class PlanScreen extends ConsumerWidget {
           PlanAsking() => PlanAskingView(state: state),
           PlanNothingFits() => PlanNothingFitsView(state: state),
           PlanError() => PlanErrorView(state: state),
-          PlanResults() => PlanResultsPreview(state: state),
+          PlanResults() => PlanResultsView(state: state),
         },
       ),
     );
