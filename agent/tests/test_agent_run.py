@@ -4,7 +4,7 @@ from itertools import pairwise
 from types import SimpleNamespace
 
 import pytest
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 
 from outing_agent import run as run_module
 from outing_agent.graph.builder import build_graph
@@ -447,3 +447,51 @@ def test_clarified_request_recommends_even_with_zero_confidence(monkeypatch):
     (finalize_messages,) = model.finalize_inputs
     assert finalize_messages[1].content == run_module.request_text(None, CLARIFICATION)
     assert "do not ask another" in finalize_messages[-1].content
+
+
+def _answer(payload, call_id):
+    return ToolMessage(json.dumps(payload), tool_call_id=call_id)
+
+
+def test_tool_calls_carry_the_places_each_call_returned():
+    messages = [
+        tool_turn("search_places", {"query": "coffee"}, "c1"),
+        _answer({"places": [{"id": "a"}, {"id": "b"}], "matched": 4, "total_saved": 5}, "c1"),
+        tool_turn("get_place_details", {"place_ids": ["a", "x"]}, "c2"),
+        _answer({"places": [{"id": "a"}], "not_found": ["x"], "truncated": []}, "c2"),
+        tool_turn("plan_route", {"place_ids": ["b", "a"]}, "c3"),
+        _answer({"order": ["b", "a"], "legs": [], "not_found": [], "truncated": []}, "c3"),
+    ]
+
+    calls = run_module.collect_tool_calls(messages, [])
+
+    assert [(c.name, c.result_place_ids, c.matched, c.source) for c in calls] == [
+        ("search_places", ["a", "b"], 4, "model"),
+        ("get_place_details", ["a"], None, "model"),
+        ("plan_route", ["b", "a"], None, "model"),
+    ]
+
+
+def test_fallback_calls_carry_their_results():
+    fallback = [
+        {
+            "name": "plan_route",
+            "args": {"place_ids": ["a", "b"]},
+            "result": json.dumps({"order": ["a", "b"], "legs": []}),
+        }
+    ]
+
+    [call] = run_module.collect_tool_calls([], fallback)
+
+    assert (call.source, call.result_place_ids, call.matched) == ("graph", ["a", "b"], None)
+
+
+def test_unparseable_tool_result_gives_no_places():
+    messages = [
+        tool_turn("search_places", {"query": "coffee"}, "c1"),
+        ToolMessage("Error: boom", tool_call_id="c1"),
+    ]
+
+    [call] = run_module.collect_tool_calls(messages, [])
+
+    assert (call.result_place_ids, call.matched) == ([], None)

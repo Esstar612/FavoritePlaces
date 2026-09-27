@@ -31,6 +31,8 @@ class ToolCall(BaseModel):
     name: str
     args: dict
     source: Literal["model", "graph"] = "model"
+    result_place_ids: list[str] = []
+    matched: int | None = None
 
 
 class RecommendationResult(BaseModel):
@@ -131,23 +133,30 @@ def run_recommendation(
     return result
 
 
-def retrieved_place_ids(messages: list[AnyMessage]) -> set[str]:
-    ids: set[str] = set()
-    for message in messages:
-        if not isinstance(message, ToolMessage):
-            continue
-        try:
-            payload = json.loads(message.content)
-        except (TypeError, ValueError):
-            continue
-        if not isinstance(payload, dict):
-            continue
-        ids.update(
+def _payload(content) -> dict:
+    try:
+        payload = json.loads(content)
+    except (TypeError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _payload_place_ids(payload: dict) -> list[str]:
+    return [
+        *[
             row["id"]
             for row in payload.get("places", [])
             if isinstance(row, dict) and isinstance(row.get("id"), str)
-        )
-        ids.update(place_id for place_id in payload.get("order", []) if isinstance(place_id, str))
+        ],
+        *[place_id for place_id in payload.get("order", []) if isinstance(place_id, str)],
+    ]
+
+
+def retrieved_place_ids(messages: list[AnyMessage]) -> set[str]:
+    ids: set[str] = set()
+    for message in messages:
+        if isinstance(message, ToolMessage):
+            ids.update(_payload_place_ids(_payload(message.content)))
     return ids
 
 
@@ -183,18 +192,30 @@ def ground_recommendations(
     return kept, ungrounded, rejected
 
 
+def _tool_call(name: str, args: dict, content, source: str = "model") -> ToolCall:
+    payload = _payload(content)
+    matched = payload.get("matched")
+    return ToolCall(
+        name=name,
+        args=args,
+        source=source,
+        result_place_ids=_payload_place_ids(payload),
+        matched=matched if isinstance(matched, int) else None,
+    )
+
+
 def collect_tool_calls(messages: list[AnyMessage], fallback_calls: list[dict]) -> list[ToolCall]:
-    answered = {message.tool_call_id for message in messages if isinstance(message, ToolMessage)}
+    results = {m.tool_call_id: m.content for m in messages if isinstance(m, ToolMessage)}
     return [
         *[
-            ToolCall(name=call["name"], args=call["args"])
+            _tool_call(call["name"], call["args"], results[call["id"]])
             for message in messages
             if isinstance(message, AIMessage)
             for call in message.tool_calls
-            if call["id"] in answered
+            if call["id"] in results
         ],
         *[
-            ToolCall(name=call["name"], args=call["args"], source="graph")
+            _tool_call(call["name"], call["args"], call.get("result"), source="graph")
             for call in fallback_calls
         ],
     ]

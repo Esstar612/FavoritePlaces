@@ -43,6 +43,7 @@ def test_recommend_returns_only_the_users_grounded_places(client):
     assert returned_ids == COUNTS_AS_GROUNDED
     assert set(returned_ids) <= owned_ids
     assert any(call["name"] == "search_places" for call in body["tool_calls"])
+    assert all("result_place_ids" in call for call in body["tool_calls"])
     assert body["overview"]
     assert "ungrounded_place_ids" not in body
     assert "rejected_place_ids" not in body
