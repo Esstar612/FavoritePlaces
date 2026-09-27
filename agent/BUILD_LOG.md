@@ -765,3 +765,99 @@ None. Both the tests and the OpenAI smoke run passed on the first try.
 
 #### Known limitations
 - `langsmith` `Client.list_runs()`, used by `evals/experiments.py`, is deprecated and will be removed after **Jan 31, 2027**. The warning points to `client.runs.query()`, which takes project IDs and a time window rather than a project name. Migrate before that date.
+
+---
+
+## 2026-09-27: Step 3 complete, eval gate in CI before every deploy
+
+### What we built
+- **Request limits:** 20 requests per user per hour and 200 overall per hour on `/recommend`. Both defaults are product choices, not measured figures. The per-user check runs first.
+- **Service logging:** the service logs `outing_agent` INFO lines to stdout, so each `recommendation_run` line reaches Cloud Run logs as structured JSON.
+- **Container:** `agent/Dockerfile`, Python 3.14 slim, running as uid 1001, with only `pyproject.toml`, `README.md` and `src/` in the image.
+- **`.github/workflows/agent-ci.yml`:**
+  - `pytest` and `container` run on every PR and push.
+  - On a push to `main`, `evals` syncs the dataset and runs the full main suite on both providers, failing on any gate or threshold.
+  - `deploy` then pushes the image to Artifact Registry and deploys `favorite-places-agent` to Cloud Run (us-central1, at most 1 instance), followed by a smoke check on the live URL.
+- **GCP setup:**
+  - an Artifact Registry repo
+  - a runtime service account (`roles/datastore.viewer`, plus access to the `anthropic-api-key` secret only)
+  - a deployer service account
+  - Workload Identity Federation for GitHub, limited to this repo's ID and `refs/heads/main`, with no JSON key
+  - a US$10 monthly budget alert on the billing account
+- **Keys:** the production Anthropic key lives in its own workspace, `outing-agent-prod`, with its own spend limit, and only in Secret Manager. It expires on 2026-12-31. CI uses the separate keys the evals already used.
+- **Provider factory:** strips whitespace from `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` (PR #15).
+- **PR structure:** the work was split from one large PR into a stack of 13 reviewable PRs (#1 to #13). `CONTRIBUTING.md` now has a "Keep PRs reviewable" guideline.
+
+### Decisions made
+- **The eval gate runs the full suite on both providers,** 27 cases x 3 repetitions x 2 = 162 runs, the size the thresholds were set on.
+  - A smaller run would need recomputed thresholds.
+  - Running only the deployed provider would leave GPT regressions unseen until a manual run.
+- **The holdout is not in CI.** At 9 runs per provider, main-set thresholds would be flaky on it, so it runs on request.
+- **Guests keep full access, including `/recommend`,** because recruiters try the app as guests. A new guest uid costs nothing, so the per-user limit doesn't cap spend. The global limit, the Anthropic workspace spend limit and the budget alert do.
+- **The container is checked in CI, not locally,** since there's no local Docker. The deploy builds on the same runners.
+- **WIF is used instead of a service account key.** The condition uses the numeric repository ID, as the WIF docs advise, not the repo name.
+- **Deferred:**
+  - Anthropic identity federation instead of an API key, pending a check that the SDK supports it
+  - a live test that forces the fallback on each provider
+  - type checking with mypy or pyright
+
+### Numbers measured
+- **CI run 36305317505** (first deploy, stack merge):
+
+  | Job | Time |
+  |---|---|
+  | `pytest` | 40s |
+  | `container` | 30s |
+  | `evals` | 8m45s |
+  | `deploy` | 1m28s |
+
+  All gates and thresholds passed. Revision `favorite-places-agent-00001-4v7`. Experiments `outing-agent-main-anthropic-55d7db8e` and `outing-agent-main-openai-bc4f9712`.
+- **CI run 36307896634** (after PR #15):
+
+  | Job | Time |
+  |---|---|
+  | `pytest` (177 passed) | 25s |
+  | `container` | 43s |
+  | `evals` | 10m28s |
+  | `deploy` | 1m41s |
+
+  All gates and thresholds passed. Revision `favorite-places-agent-00003-htl`. Experiments `outing-agent-main-anthropic-287f1c98` and `outing-agent-main-openai-9b74ceb9`.
+- **Eval scores, run 1 then run 2:**
+
+  | Scorer | Claude | GPT |
+  |---|---|---|
+  | covers_request | 0.939, 0.970 | 1.000, 1.000 |
+  | details_before_recommending | 0.955, 0.954 | 1.000, 1.000 |
+  | empty_when_nothing_fits | 1.000, 1.000 | 1.000, 1.000 |
+  | expected_recall | 0.942, 0.950 | 0.983, 1.000 |
+  | fallback_rate (report only) | 0.049, 0.037 | 0.000, 0.000 |
+  | required_tools_used | 0.933, 0.960 | 1.000, 1.000 |
+  | respects_sequence | 0.933, 0.967 | 1.000, 1.000 |
+  | route_when_multi_stop | 0.872, 0.923 | 1.000, 1.000 |
+  | tool_call_budget | 0.988, 0.963 | 0.963, 0.963 |
+
+  `grounded` and `no_forbidden` were 1.000 in both runs for both providers.
+  - Claude's `covers_request` and `respects_sequence` were 1.000 in the fifth baseline and 0.939 and 0.933 in run 1, then 0.970 and 0.967 in run 2. All are above the 0.90 thresholds, and consistent with run-to-run variation.
+- **Live check** against revision `00002-8g2`, as a guest (anonymous sign-in, then `/user/seed-demo` seeding 5 places):
+  - `/recommend` for "Somewhere for coffee this morning" returned the guest's own Blue Bottle Coffee from Firestore.
+  - The reason came from its notes (pour-over, quiet at 8am, bay-view window seats).
+  - The model called `search_places` and `get_place_details` itself, so the fallback didn't run.
+  - The `recommendation_run` line appeared in Cloud Run logs with tool calls, place IDs and `places_store: firestore`.
+- **Eval cost per push:** not measured yet. It comes from `fallback_cost.py` on a CI experiment.
+
+### Problems hit and how we solved them
+- **The first live request returned a 500.** The Anthropic key in Secret Manager ended with a newline, from pasting it, pressing Enter, then Ctrl-D. A newline is an illegal HTTP header value, so every model call failed with `APIConnectionError`.
+  - The HTTP error message included the key, so it was written to Cloud Run logs. **The key was treated as leaked:** deleted in the Anthropic console, replaced, stored as secret version 2 with `printf '%s'`, and version 1 disabled.
+  - The service was moved to the new version with `gcloud run services update`.
+  - PR #15 now strips whitespace from provider keys, and the README's rotation steps use the safe form.
+- **Pasting multi-line commands into the terminal broke them twice:** a `gcloud services enable` split across lines, and a backslash continuation with trailing spaces. Commands that read input (`read -s`, `gh secret set`) must run on their own. Later commands were given as single lines.
+- **A cherry-pick failed during the PR split** because a file changed mid-operation, most likely Dropbox syncing the repo folder. The retry matched the original exactly: `git diff` against the old top commit was empty.
+- **The GitHub stack preview first seemed to stop short.** Creating the stack from the bottom, then adding the top two PRs, gave the full 13.
+
+### Resume claims moved forward
+- **3 (evals in CI before deploy): complete.** Every push to `main` that changes agent code runs the full eval suite on both providers, and only a pass deploys.
+- **4 (run logging):** every production run logs its tool calls and the places it chose to Cloud Run. Confidence escalation is still Step 4.
+- **2:** the FastAPI service now runs on Cloud Run.
+
+### Case study
+Evals gate every deploy: a push to `main` runs 162 scored agent runs across Claude and GPT, and the Cloud Run deploy only happens if every gate and per-provider threshold passes.
