@@ -29,6 +29,9 @@ class AppConfig {
   // Production: https://your-service.a.run.app
   static const String backendUrl = 'YOUR_BACKEND_URL';
 
+  // Outing agent (agent/ in this repo). Local dev: http://localhost:8001
+  static const String agentUrl = 'YOUR_AGENT_URL';
+
   // ─── App constants ──────────────────────────────────────────────────────
   static const String appName = 'Favorite Places';
 
