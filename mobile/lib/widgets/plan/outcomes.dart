@@ -5,6 +5,7 @@ import 'package:favorite_places/providers/plan.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/widgets/plan/common.dart';
+import 'package:favorite_places/widgets/plan/trace.dart';
 
 final _compact = ButtonStyle(
   padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16)),
@@ -23,12 +24,19 @@ class PlanNothingFitsView extends ConsumerWidget {
     final theme = Theme.of(context);
     final notifier = ref.read(planProvider.notifier);
     final count = ref.watch(userPlacesProvider).length;
-    final searches = state.result.toolCalls.where((c) => c.name == 'search_places').toList();
-    final checked = {for (final call in state.result.toolCalls) ...call.resultPlaceIds}.length;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      children: [
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight - 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
         PlanYouAsked(request: state.request),
         const SizedBox(height: 24),
         Icon(Icons.wrong_location_outlined, size: 72, color: theme.colorScheme.primary),
@@ -84,42 +92,16 @@ class PlanNothingFitsView extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-          decoration: BoxDecoration(
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: theme.colorScheme.surfaceContainerHigh,
-                child: Icon(Icons.code, size: 20, color: theme.colorScheme.primary),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'How I got this',
-                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-                    ),
-                    Text(
-                      '${searches.length} ${searches.length == 1 ? 'search' : 'searches'} · '
-                      'checked $checked ${checked == 1 ? 'place' : 'places'}',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ],
-                ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: PlanTrace(calls: state.result.toolCalls),
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

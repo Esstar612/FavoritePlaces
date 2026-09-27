@@ -7,6 +7,7 @@ import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/services/agent_service.dart';
 import 'package:favorite_places/utils/static_map.dart';
 import 'package:favorite_places/widgets/plan/common.dart';
+import 'package:favorite_places/widgets/plan/trace.dart';
 
 class PlanResultsView extends ConsumerWidget {
   const PlanResultsView({super.key, required this.state});
@@ -53,6 +54,8 @@ class PlanResultsView extends ConsumerWidget {
           if (i > 0) _LegRow(leg: legs[(stops[i - 1].$1.placeId, stop.placeId)]),
           _StopCard(stop: stop, place: place, number: i + 1),
         ],
+        const SizedBox(height: 16),
+        PlanTrace(calls: result.toolCalls),
         const SizedBox(height: 16),
         Row(
           children: [
