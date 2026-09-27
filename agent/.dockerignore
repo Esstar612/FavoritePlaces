@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+evals/
+scripts/
+docs/
+BUILD_LOG.md
+serviceAccountKey.json
+firebase-adminsdk-*.json
+*.pem
+*.key
+gha-creds-*.json
