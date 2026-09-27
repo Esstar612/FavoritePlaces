@@ -1,0 +1,132 @@
+name: Outing agent CI
+
+on:
+  pull_request:
+    paths:
+      - 'agent/**'
+      - '!agent/**/*.md'
+      - '.github/workflows/agent-ci.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'agent/**'
+      - '!agent/**/*.md'
+      - '.github/workflows/agent-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: agent-ci-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_ID: favorite-places-app-94adb
+  REGION: us-central1
+  SERVICE: favorite-places-agent
+  IMAGE: us-central1-docker.pkg.dev/favorite-places-app-94adb/outing-agent/agent
+  RUNTIME_SA: outing-agent-runtime@favorite-places-app-94adb.iam.gserviceaccount.com
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: agent/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+
+  container:
+    name: container build and checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t outing-agent agent
+      - name: Run the image and check it
+        run: |
+          docker run -d --rm -p 8080:8080 --name outing-agent outing-agent
+          for _ in $(seq 1 30); do curl -sf localhost:8080/health > /dev/null && break; sleep 1; done
+          test "$(curl -s localhost:8080/health)" = '{"status":"ok"}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8080/recommend \
+            -H 'Content-Type: application/json' -d '{"message": "coffee"}')" = 401
+          test "$(docker exec outing-agent id -u)" = 1001
+          test "$(docker exec outing-agent ls -A /app | sort | tr '\n' ' ')" = 'README.md pyproject.toml src '
+          docker stop outing-agent
+
+  evals:
+    name: LangSmith evals (gates and thresholds)
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: agent
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+      LANGSMITH_TRACING: 'true'
+      LANGSMITH_PROJECT: favorite-places-outing-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: agent/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: python -m evals.sync_dataset
+      - run: python -m evals.run_evals --yes
+
+  deploy:
+    name: deploy to Cloud Run
+    needs: [ evals, container ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+          project_id: ${{ env.PROJECT_ID }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - run: gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+      - name: Build and push the image
+        run: |
+          docker build -t "$IMAGE:$GITHUB_SHA" agent
+          docker push "$IMAGE:$GITHUB_SHA"
+      - name: Deploy
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE:$GITHUB_SHA" \
+            --region "$REGION" \
+            --service-account "$RUNTIME_SA" \
+            --max-instances 1 \
+            --min-instances 0 \
+            --concurrency 10 \
+            --timeout 300 \
+            --allow-unauthenticated \
+            --set-env-vars "LLM_PROVIDER=anthropic,PLACES_STORE=firestore,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,LANGSMITH_TRACING=false,CHECK_REVOKED=false" \
+            --set-secrets "ANTHROPIC_API_KEY=anthropic-api-key:latest" \
+            --quiet
+      - name: Smoke check
+        run: |
+          URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
+          echo "Service URL: $URL"
+          test "$(curl -s "$URL/health")" = '{"status":"ok"}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/recommend" \
+            -H 'Content-Type: application/json' -d '{"message": "coffee"}')" = 401
