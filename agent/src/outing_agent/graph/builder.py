@@ -154,7 +154,11 @@ def build_graph(model: BaseChatModel):
             results="\n\n".join(f"{call['name']}: {call['result']}" for call in calls),
         )
         revised = finalize_model.invoke(
-            [SystemMessage(SYSTEM_PROMPT), *_answered_messages(state["messages"]), HumanMessage(prompt)]
+            [
+                SystemMessage(SYSTEM_PROMPT),
+                *_answered_messages(state["messages"]),
+                HumanMessage(prompt),
+            ]
         )
         final, removed = _keep_draft_places(revised, draft)
         return {
@@ -176,6 +180,8 @@ def build_graph(model: BaseChatModel):
         {"tools": "tools", END: "finalize", "finalize": "finalize"},
     )
     graph.add_edge("tools", "agent")
-    graph.add_conditional_edges("finalize", route_after_finalize, {"fallback": "fallback", END: END})
+    graph.add_conditional_edges(
+        "finalize", route_after_finalize, {"fallback": "fallback", END: END}
+    )
     graph.add_edge("fallback", END)
     return graph.compile()

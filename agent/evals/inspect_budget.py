@@ -21,8 +21,12 @@ def describe(call: dict) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Inspect tool_call_budget misses and candidate budgets.")
-    parser.add_argument("--experiment", action="append", required=True, metavar="PROVIDER=EXPERIMENT")
+    parser = argparse.ArgumentParser(
+        description="Inspect tool_call_budget misses and candidate budgets."
+    )
+    parser.add_argument(
+        "--experiment", action="append", required=True, metavar="PROVIDER=EXPERIMENT"
+    )
     parser.add_argument("--cases", choices=sorted(CASE_SETS), default="main")
     args = parser.parse_args()
 
@@ -55,7 +59,9 @@ def main() -> None:
 
         print(f"\n=== {provider}: tool calls per run, and runs within each candidate budget")
         names = [*CANDIDATE_BUDGETS, "current (ref)"]
-        print(f"{'case':<32} {'stops':>5} {'calls':<10} " + " ".join(f"{n[:14]:>14}" for n in names))
+        print(
+            f"{'case':<32} {'stops':>5} {'calls':<10} " + " ".join(f"{n[:14]:>14}" for n in names)
+        )
         totals = {name: 0 for name in names}
         run_count = 0
         for case_id in sorted(by_case):

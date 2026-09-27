@@ -27,19 +27,27 @@ def test_metadata_keys_added_by_langsmith_are_ignored():
 def test_changed_metadata_we_set_is_reported():
     current = stored(metadata={**EXAMPLE["metadata"], "tags": ["old-tag"]})
 
-    assert [change.split(":")[0] for change in changed_fields(current, EXAMPLE)] == ["metadata.tags"]
+    assert [change.split(":")[0] for change in changed_fields(current, EXAMPLE)] == [
+        "metadata.tags"
+    ]
 
 
 def test_changed_reference_value_is_reported():
-    current = stored(outputs={**EXAMPLE["outputs"], "expects_route": not EXAMPLE["outputs"]["expects_route"]})
+    current = stored(
+        outputs={**EXAMPLE["outputs"], "expects_route": not EXAMPLE["outputs"]["expects_route"]}
+    )
 
-    assert [change.split(":")[0] for change in changed_fields(current, EXAMPLE)] == ["outputs.expects_route"]
+    assert [change.split(":")[0] for change in changed_fields(current, EXAMPLE)] == [
+        "outputs.expects_route"
+    ]
 
 
 def test_reference_key_removed_from_the_cases_is_reported():
     current = stored(outputs={**EXAMPLE["outputs"], "retired_key": 1})
 
-    assert [change.split(":")[0] for change in changed_fields(current, EXAMPLE)] == ["outputs.retired_key"]
+    assert [change.split(":")[0] for change in changed_fields(current, EXAMPLE)] == [
+        "outputs.retired_key"
+    ]
 
 
 def test_missing_stored_fields_count_as_changes():

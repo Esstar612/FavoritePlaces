@@ -99,16 +99,36 @@ def test_respects_sequence_skips_unordered_and_non_day_plan_cases():
 
 
 def test_details_before_recommending():
-    assert score(scorers.details_before_recommending, outputs(recs=["a", "b"], tool_calls=[DETAILS])) == 1
-    assert score(scorers.details_before_recommending, outputs(recs=["a", "c"], tool_calls=[DETAILS])) == 0
+    assert (
+        score(scorers.details_before_recommending, outputs(recs=["a", "b"], tool_calls=[DETAILS]))
+        == 1
+    )
+    assert (
+        score(scorers.details_before_recommending, outputs(recs=["a", "c"], tool_calls=[DETAILS]))
+        == 0
+    )
     assert score(scorers.details_before_recommending, outputs()) is None
 
 
 def test_route_when_multi_stop_only_scores_route_cases():
     route_case = reference(expects_route=True)
-    assert score(scorers.route_when_multi_stop, outputs(recs=["a", "b"], tool_calls=[ROUTE]), route_case) == 1
-    assert score(scorers.route_when_multi_stop, outputs(recs=["a", "b"], tool_calls=[DETAILS]), route_case) == 0
-    assert score(scorers.route_when_multi_stop, outputs(recs=["a", "b"], tool_calls=[DETAILS])) is None
+    assert (
+        score(
+            scorers.route_when_multi_stop, outputs(recs=["a", "b"], tool_calls=[ROUTE]), route_case
+        )
+        == 1
+    )
+    assert (
+        score(
+            scorers.route_when_multi_stop,
+            outputs(recs=["a", "b"], tool_calls=[DETAILS]),
+            route_case,
+        )
+        == 0
+    )
+    assert (
+        score(scorers.route_when_multi_stop, outputs(recs=["a", "b"], tool_calls=[DETAILS])) is None
+    )
 
 
 def test_required_tools_used():
@@ -173,7 +193,9 @@ def after_fallback(out, *graph_calls, draft=(), draft_grounded=None, removed=())
 
 
 def test_tool_use_scorers_count_only_model_calls():
-    out = after_fallback(outputs(recs=["a", "b"], tool_calls=[SEARCH]), DETAILS, ROUTE, draft=["a", "b"])
+    out = after_fallback(
+        outputs(recs=["a", "b"], tool_calls=[SEARCH]), DETAILS, ROUTE, draft=["a", "b"]
+    )
     required = reference(required_tools=["search_places", "get_place_details"], expects_route=True)
     assert score(scorers.details_before_recommending, out) == 0
     assert score(scorers.route_when_multi_stop, out, required) == 0
@@ -185,7 +207,12 @@ def test_tool_use_scorers_count_only_model_calls():
 
 def test_fallback_rate():
     assert score(scorers.fallback_rate, outputs(recs=["a"], tool_calls=[SEARCH, DETAILS])) == 0
-    assert score(scorers.fallback_rate, after_fallback(outputs(recs=["a"], tool_calls=[SEARCH]), DETAILS)) == 1
+    assert (
+        score(
+            scorers.fallback_rate, after_fallback(outputs(recs=["a"], tool_calls=[SEARCH]), DETAILS)
+        )
+        == 1
+    )
     assert score(scorers.fallback_rate, {}) is None
 
 
@@ -195,7 +222,9 @@ def test_details_before_recommending_scores_the_grounded_draft_after_a_fallback(
     dropped_unread_pick = after_fallback(
         outputs(recs=["a"], tool_calls=[SEARCH, read_a]), read_c, draft=["a", "c"]
     )
-    routed_only = after_fallback(outputs(recs=["a", "b"], tool_calls=[SEARCH, DETAILS]), ROUTE, draft=["a", "b"])
+    routed_only = after_fallback(
+        outputs(recs=["a", "b"], tool_calls=[SEARCH, DETAILS]), ROUTE, draft=["a", "b"]
+    )
     assert score(scorers.details_before_recommending, dropped_unread_pick) == 0
     assert score(scorers.details_before_recommending, routed_only) == 1
 
@@ -215,7 +244,9 @@ def test_ungrounded_draft_pick_is_ignored_by_details_but_seen_by_no_forbidden():
 def test_no_forbidden_counts_draft_and_removed_picks():
     ref = reference(forbidden_place_ids=["f"])
     in_draft = after_fallback(outputs(recs=["a"], tool_calls=[SEARCH]), DETAILS, draft=["a", "f"])
-    removed = after_fallback(outputs(recs=["a"], tool_calls=[SEARCH]), DETAILS, draft=["a"], removed=["f"])
+    removed = after_fallback(
+        outputs(recs=["a"], tool_calls=[SEARCH]), DETAILS, draft=["a"], removed=["f"]
+    )
     assert score(scorers.no_forbidden, in_draft, ref) == 0
     assert score(scorers.no_forbidden, removed, ref) == 0
 

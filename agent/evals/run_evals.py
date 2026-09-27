@@ -90,7 +90,9 @@ def main() -> int:
     parser.add_argument("--provider", choices=[*sorted(config.MODELS), "both"], default="both")
     parser.add_argument("--repetitions", type=int, default=DEFAULT_REPETITIONS)
     parser.add_argument("--cases", choices=sorted(CASE_SETS), default="main")
-    parser.add_argument("--case", action="append", metavar="CASE_ID", help="run only these case IDs")
+    parser.add_argument(
+        "--case", action="append", metavar="CASE_ID", help="run only these case IDs"
+    )
     parser.add_argument("--yes", action="store_true", help="actually run the paid model calls")
     args = parser.parse_args()
     dataset_name = CASE_SETS[args.cases][0]
@@ -115,7 +117,9 @@ def main() -> int:
 
     client = Client()
     if not client.has_dataset(dataset_name=dataset_name):
-        print(f"Dataset {dataset_name} not found. Run `python -m evals.sync_dataset --cases {args.cases}` first.")
+        print(
+            f"Dataset {dataset_name} not found. Run `python -m evals.sync_dataset --cases {args.cases}` first."
+        )
         return 2
 
     data = dataset_name
@@ -156,7 +160,9 @@ def main() -> int:
         scores = collect_scores(results)
         print(f"\n{provider} ({config.MODELS[provider]}), experiment {results.experiment_name}")
         # A few targeted cases can't be compared with thresholds set on the full case set.
-        lines, provider_failures = check_scores(provider, scores, thresholds, enforce_thresholds=not args.case)
+        lines, provider_failures = check_scores(
+            provider, scores, thresholds, enforce_thresholds=not args.case
+        )
         print("\n".join(lines))
         failures.extend(provider_failures)
         if args.case:
@@ -169,7 +175,11 @@ def main() -> int:
     if failures:
         print(f"\nFailures: {', '.join(failures)}")
         return 1
-    print("\nAll gates and thresholds passed." if thresholds and not args.case else "\nAll gates passed.")
+    print(
+        "\nAll gates and thresholds passed."
+        if thresholds and not args.case
+        else "\nAll gates passed."
+    )
     return 0
 
 

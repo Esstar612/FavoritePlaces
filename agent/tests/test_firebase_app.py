@@ -38,9 +38,7 @@ def fake_firebase(monkeypatch):
     monkeypatch.setattr(firebase_admin, "get_app", no_app)
     monkeypatch.setattr(firebase_admin, "initialize_app", record_init)
     monkeypatch.setattr(firebase_app.credentials, "Certificate", FakeCertificate)
-    monkeypatch.setattr(
-        firebase_app.credentials, "ApplicationDefault", FakeApplicationDefault
-    )
+    monkeypatch.setattr(firebase_app.credentials, "ApplicationDefault", FakeApplicationDefault)
     return calls
 
 

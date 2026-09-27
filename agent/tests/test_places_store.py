@@ -50,7 +50,9 @@ def _doc(doc_id, data):
 
 def _client(docs):
     client = MagicMock()
-    query = client.collection.return_value.where.return_value.order_by.return_value.limit.return_value
+    query = (
+        client.collection.return_value.where.return_value.order_by.return_value.limit.return_value
+    )
     query.stream.return_value = iter(docs)
     return client
 
