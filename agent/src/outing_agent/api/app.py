@@ -14,7 +14,7 @@ from outing_agent.api.rate_limit import RateLimiter
 from outing_agent.graph.builder import build_graph
 from outing_agent.places.store import PlacesStore, build_places_store
 from outing_agent.providers.factory import get_chat_model
-from outing_agent.run import RecommendedPlace, ToolCall, run_recommendation
+from outing_agent.run import Leg, RecommendedPlace, ToolCall, run_recommendation
 
 GLOBAL_KEY = "*"
 RATE_WINDOW_S = 3600
@@ -76,6 +76,7 @@ class RecommendResponse(BaseModel):
     model: str
     overview: str
     recommendations: list[RecommendedPlace]
+    legs: list[Leg]
     tool_calls: list[ToolCall]
     confidence: float | None
     clarifying_question: str | None

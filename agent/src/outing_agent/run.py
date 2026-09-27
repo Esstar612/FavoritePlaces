@@ -2,6 +2,7 @@ import json
 import logging
 import uuid
 from contextlib import nullcontext
+from itertools import pairwise
 from typing import Literal
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
@@ -10,12 +11,18 @@ from pydantic import BaseModel
 
 from outing_agent.config import confidence_threshold
 from outing_agent.graph.state import AgentContext, RecommendationSet
+from outing_agent.places.geo import haversine_km
 from outing_agent.places.models import Place
 from outing_agent.places.store import PlacesStore, RequestScopedPlacesStore
 
 log = logging.getLogger(__name__)
 
 RECURSION_LIMIT = 21
+
+# Product choices, not measurements: straight-line distance stretched for streets, at an easy pace.
+WALK_KMH = 4.8
+DETOUR_FACTOR = 1.3
+MAX_WALK_MIN = 30
 
 
 class RecommendedPlace(BaseModel):
@@ -35,6 +42,12 @@ class ToolCall(BaseModel):
     matched: int | None = None
 
 
+class Leg(BaseModel):
+    from_place_id: str
+    to_place_id: str
+    walk_minutes: int | None
+
+
 class RecommendationResult(BaseModel):
     run_id: str
     provider: str
@@ -42,6 +55,7 @@ class RecommendationResult(BaseModel):
     overview: str
     kind: str | None
     recommendations: list[RecommendedPlace]
+    legs: list[Leg]
     tool_calls: list[ToolCall]
     ungrounded_place_ids: list[str]
     rejected_place_ids: list[str]
@@ -118,6 +132,7 @@ def run_recommendation(
         overview=final_set.overview if final_set and not escalated else "",
         kind=final_set.kind if final_set else None,
         recommendations=kept,
+        legs=walking_legs(kept, owned, final_set.kind if final_set else None),
         tool_calls=collect_tool_calls(messages, state.get("fallback_calls", [])),
         ungrounded_place_ids=ungrounded,
         rejected_place_ids=rejected,
@@ -190,6 +205,25 @@ def ground_recommendations(
                 )
             )
     return kept, ungrounded, rejected
+
+
+def walking_legs(
+    recommendations: list[RecommendedPlace], owned: dict[str, Place], kind: str | None
+) -> list[Leg]:
+    if kind != "itinerary":
+        return []
+    legs = []
+    for a, b in pairwise(recommendations):
+        km = haversine_km(owned[a.place_id], owned[b.place_id]) * DETOUR_FACTOR
+        minutes = max(1, round(km / WALK_KMH * 60))
+        legs.append(
+            Leg(
+                from_place_id=a.place_id,
+                to_place_id=b.place_id,
+                walk_minutes=minutes if minutes <= MAX_WALK_MIN else None,
+            )
+        )
+    return legs
 
 
 def _tool_call(name: str, args: dict, content, source: str = "model") -> ToolCall:

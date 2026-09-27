@@ -1,18 +1,17 @@
 import json
-import math
 from itertools import pairwise
 from typing import Any
 
 from langchain_core.tools import tool
 from langgraph.prebuilt import ToolRuntime
 
+from outing_agent.places.geo import haversine_km
 from outing_agent.places.models import Category, Place
 
 MAX_SEARCH_LIMIT = 20
 MAX_DETAIL_IDS = 5
 MAX_ROUTE_IDS = 5
 MIN_QUERY_WORD = 3
-EARTH_RADIUS_KM = 6371.0
 
 
 def _places(runtime: ToolRuntime[Any]) -> list[Place]:
@@ -141,7 +140,7 @@ def plan_route(runtime: ToolRuntime[Any], place_ids: list[str], optimize: bool =
         )
     route = _nearest_neighbor_order(stops) if optimize else stops
     legs = [
-        {"from": a.id, "to": b.id, "km": round(_haversine_km(a, b), 2)} for a, b in pairwise(route)
+        {"from": a.id, "to": b.id, "km": round(haversine_km(a, b), 2)} for a, b in pairwise(route)
     ]
     return json.dumps(
         {
@@ -158,18 +157,10 @@ def plan_route(runtime: ToolRuntime[Any], place_ids: list[str], optimize: bool =
 def _nearest_neighbor_order(stops: list[Place]) -> list[Place]:
     route, remaining = [stops[0]], stops[1:]
     while remaining:
-        nearest = min(remaining, key=lambda p: _haversine_km(route[-1], p))
+        nearest = min(remaining, key=lambda p: haversine_km(route[-1], p))
         route.append(nearest)
         remaining.remove(nearest)
     return route
-
-
-def _haversine_km(a: Place, b: Place) -> float:
-    lat1, lat2 = math.radians(a.lat), math.radians(b.lat)
-    d_lat = lat2 - lat1
-    d_lng = math.radians(b.lng - a.lng)
-    h = math.sin(d_lat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(d_lng / 2) ** 2
-    return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(h))
 
 
 TOOLS = [search_places, get_place_details, plan_route]

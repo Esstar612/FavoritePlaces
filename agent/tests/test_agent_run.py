@@ -10,8 +10,9 @@ from outing_agent import run as run_module
 from outing_agent.graph.builder import build_graph
 from outing_agent.graph.state import AgentContext
 from outing_agent.places.fixtures import DEMO_UID, OTHER_UID, PLANNER_UID
+from outing_agent.places.models import Place
 from outing_agent.places.store import FixturePlacesStore
-from outing_agent.run import RECURSION_LIMIT, run_recommendation
+from outing_agent.run import RECURSION_LIMIT, RecommendedPlace, run_recommendation
 from outing_agent.tools.places_tools import TOOLS, get_place_details, plan_route, search_places
 from tests.fakes import (
     ALL_RECOMMENDED,
@@ -246,6 +247,7 @@ def test_fallback_reads_unread_picks_and_routes_an_itinerary():
     assert result.draft_place_ids == [BLUE_BOTTLE, TARTINE]
     assert result.draft_grounded_place_ids == [BLUE_BOTTLE, TARTINE]
     assert result.fallback_removed_place_ids == []
+    assert [(leg.from_place_id, leg.to_place_id) for leg in result.legs] == [(BLUE_BOTTLE, TARTINE)]
 
 
 def test_second_finalize_sees_the_draft_and_the_tool_results():
@@ -358,6 +360,7 @@ def test_low_confidence_escalates_with_the_question_and_no_places(monkeypatch):
     assert len(model.finalize_inputs) == 1
     assert {call.source for call in result.tool_calls} == {"model"}
     assert result.draft_place_ids == [BLUE_BOTTLE, TARTINE]
+    assert result.legs == []
 
 
 def test_confident_answer_is_not_escalated(monkeypatch):
@@ -495,3 +498,35 @@ def test_unparseable_tool_result_gives_no_places():
     [call] = run_module.collect_tool_calls(messages, [])
 
     assert (call.result_place_ids, call.matched) == ([], None)
+
+
+def _place(place_id, lat):
+    return Place(id=place_id, title=place_id, lat=lat, lng=-122.4, address="SF")
+
+
+def _stop(place_id, order):
+    return RecommendedPlace(
+        place_id=place_id, title=place_id, category="other", order=order, reason="r"
+    )
+
+
+def test_itinerary_legs_estimate_walking_minutes():
+    owned = {"a": _place("a", 37.77), "b": _place("b", 37.78), "c": _place("c", 37.81)}
+    stops = [_stop("a", 1), _stop("b", 2), _stop("c", 3)]
+
+    legs = run_module.walking_legs(stops, owned, "itinerary")
+
+    assert [(leg.from_place_id, leg.to_place_id, leg.walk_minutes) for leg in legs] == [
+        ("a", "b", 18),
+        ("b", "c", None),
+    ]
+
+
+def test_options_get_no_legs():
+    owned = {"a": _place("a", 37.77), "b": _place("b", 37.78)}
+
+    assert run_module.walking_legs([_stop("a", 1), _stop("b", 2)], owned, "options") == []
+
+
+def test_one_stop_gets_no_legs():
+    assert run_module.walking_legs([_stop("a", 1)], {"a": _place("a", 37.77)}, "itinerary") == []

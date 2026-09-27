@@ -146,6 +146,12 @@ asking needlessly on at most 5% of clear ones, and requires asking on at least
 half of the vague ones. The 5% and the half are product choices, not measured
 figures.
 
+### Walking legs
+
+An `itinerary` answer comes with `legs`: one per pair of consecutive stops, each with `from_place_id`, `to_place_id` and `walk_minutes`. `walk_minutes` is `null` when the walk would be longer than `MAX_WALK_MIN`, so the app can suggest transit or a ride instead. An `options` answer lists alternatives, not stops, so it has no legs.
+
+The time is an estimate: the straight-line distance times `DETOUR_FACTOR` (1.3), at `WALK_KMH` (4.8), capped at `MAX_WALK_MIN` (30). All three live in `run.py` and are product choices, not measurements.
+
 ### Guest access and spend caps
 
 Guests (Firebase anonymous sign-in) have full access, including
