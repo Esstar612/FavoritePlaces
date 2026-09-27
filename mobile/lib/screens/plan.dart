@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:favorite_places/providers/plan.dart';
 import 'package:favorite_places/providers/user_places.dart';
+import 'package:favorite_places/widgets/plan/asking.dart';
 import 'package:favorite_places/widgets/plan/compose.dart';
+import 'package:favorite_places/widgets/plan/outcomes.dart';
+import 'package:favorite_places/widgets/plan/thinking.dart';
 
 class PlanScreen extends ConsumerWidget {
   const PlanScreen({super.key});
@@ -36,7 +39,11 @@ class PlanScreen extends ConsumerWidget {
       body: SafeArea(
         child: switch (state) {
           PlanIdle() => PlanCompose(key: ValueKey(state), state: state),
-          _ => const SizedBox.shrink(),
+          PlanThinking() => PlanThinkingView(request: state.request),
+          PlanAsking() => PlanAskingView(state: state),
+          PlanNothingFits() => PlanNothingFitsView(state: state),
+          PlanError() => PlanErrorView(state: state),
+          PlanResults() => PlanResultsPreview(state: state),
         },
       ),
     );
