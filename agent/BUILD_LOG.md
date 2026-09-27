@@ -864,7 +864,7 @@ Evals gate every deploy: a push to `main` runs 162 scored agent runs across Clau
 
 ---
 
-## 2026-09-27: Step 4, confidence escalation (in progress)
+## 2026-09-27: Step 4, confidence escalation
 
 ### What we built
 - **Confidence and a clarifying question.** `finalize` returns `confidence` (0 to 1) and a `clarifying_question`.
@@ -948,20 +948,64 @@ Evals gate every deploy: a push to `main` runs 162 scored agent runs across Clau
   - **Why Run A and not a new run:** it used the final prompt. No clear run fell below the new confidence thresholds, so clear runs behave the same with escalation on.
   - **The one difference:** the 12 vague runs per provider were scored by `details_before_recommending` in Run A. With escalation on they return no places and aren't scored.
 
+- **Run B** (CI run 36314896551, merge of #29 and #30, the first run with escalation on). Job times are from the job start and end timestamps:
+
+  | Job | Result |
+  |---|---|
+  | `pytest` | 221 passed, 38s |
+  | `container` | 33s |
+  | evals | 192 agent runs, 11m21s |
+  | deploy | 1m16s, revision `favorite-places-agent-00006-m45` |
+
+  All gates and thresholds passed. Experiments `outing-agent-main-anthropic-5d78502d` and `outing-agent-main-openai-4ec20976`.
+
+  | Scorer | Claude | GPT |
+  |---|---|---|
+  | covers_request | 1.000 (n=36) | 0.972 (n=36) |
+  | details_before_recommending | 0.957 (n=70) | 1.000 (n=71) |
+  | empty_when_nothing_fits | 1.000 (n=12) | 1.000 (n=12) |
+  | expected_recall | 0.924 (n=66) | 0.977 (n=66) |
+  | fallback_rate (report only) | 0.042 (n=96) | 0.000 (n=96) |
+  | required_tools_used | 0.951 (n=81) | 1.000 (n=81) |
+  | respects_sequence | 1.000 (n=33) | 0.970 (n=33) |
+  | route_when_multi_stop | 0.905 (n=42) | 1.000 (n=42) |
+  | tool_call_budget | 1.000 (n=96) | 0.958 (n=96) |
+  | asks_when_vague (report only) | **1.000** (n=12) | **1.000** (n=12) |
+  | no_needless_question (report only) | **1.000** (n=84) | **0.988** (n=84) |
+
+  - `grounded` and `no_forbidden` were 1.000 for both providers.
+  - `empty_when_nothing_fits` stayed at 1.000, and it scores 0 on an escalated run, so no nothing-fits case escalated.
+  - GPT asked 1 needless question in 84 clear runs. Which case it was hasn't been checked yet.
+  - `asks_when_vague` here is in-sample. The holdout figures above are the out-of-sample ones.
+- **Live check** against revision `00006-m45`, as a new guest (anonymous sign-in, then `/user/seed-demo` seeding 5 places):
+  - "Somewhere nice." escalated: confidence 0.1, no places, an empty overview, no tool calls, and a clarifying question asking what kind of place or mood.
+  - The clarification round trip, answered "Somewhere with a view of the bay.", returned the guest's Blue Bottle Coffee with confidence 0.9, and the reason came from its notes (bay-view window seats).
+  - The model called `search_places` three times and `get_place_details` once. Every call was tagged `source: model`, so the fallback didn't run.
+  - Cloud Run logged both `recommendation_run` lines: confidence 0.1, escalated, round 0 with no places; then confidence 0.9, not escalated, clarification round, with the Blue Bottle place ID.
+
 ### Observations
-- **Model confidence separates vague from clear requests well for both providers.** Neither asked needlessly on any clear run, in-sample or on the holdout.
+- **Model confidence separates vague from clear requests well for both providers.** Neither asked needlessly on any clear run in Run A or on the holdout. In Run B, GPT asked once in 84 clear runs.
 - **GPT's vague runs cluster just under its 0.55 threshold,** consistent with the rubric's "about 0.5". The fixed tie rule chose 0.55, even though every threshold from 0.55 to 0.90 scored the same. The holdout's 6 of 6 suggests the thin margin holds.
 - **Claude missed 1 of 6 held-out vague runs.** That's too few to justify changing the rule.
 - **Every recomputed threshold got looser or stayed the same.**
   - Run A's means are close to the fifth baseline's, but its run-to-run spread is wider, and each threshold is a lower bound from a single run.
   - **Claude's route threshold of 0.70 is a weak regression check.** The fallback still guarantees a route for every itinerary, so users are protected.
   - Basing thresholds on several runs of the same prompt would tighten them. That's a later change.
+- **The escalated live run made no tool calls,** so its question was generic rather than based on the guest's places. Searching first could give a sharper question, at the cost of tool calls on every vague request.
 
 ### Problems hit and how we solved them
 - **Rebasing PR 3 onto the amended PR 2 first replayed PR 2's old commit and conflicted.** `git rebase --onto` replayed only PR 3's own commit.
 - **Dropbox again changed files mid-operation during a branch switch.** Retrying on a clean tree worked.
 
-### Next
-- Merge PR 6 and PR 7 as one stack: Run B, the first CI run with escalation on, gated by the recomputed thresholds.
-- Later: let `thresholds.py` pool several experiments of the same prompt.
-- A live check with a guest account: a vague request, then the clarification round trip, then the `recommendation_run` log.
+### Resume claims moved forward
+- **4 (confidence escalation and run logging): complete.** Below a per-provider threshold picked on eval data, the agent asks one clarifying question instead of guessing, and every production run logs its confidence, escalation, clarification round, tool calls and chosen places to Cloud Run.
+- **3:** the eval gate now also reports whether each provider asks on vague requests and stays quiet on clear ones.
+
+### Case study
+Vague requests get a question, not a guess: each model reports its confidence, the threshold is calibrated per provider on 90 scored eval runs and checked on held-out cases, and a clarified request comes back with grounded recommendations.
+
+### Later
+- Let `thresholds.py` pool several experiments of the same prompt, to tighten the gate thresholds.
+- Identify GPT's needless question in Run B.
+- A live test that forces the fallback on each provider.
+- Anthropic identity federation instead of an API key.
