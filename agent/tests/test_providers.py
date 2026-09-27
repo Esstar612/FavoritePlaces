@@ -33,6 +33,18 @@ def test_openai_model_settings():
     assert model.max_retries == 2
 
 
+@pytest.mark.parametrize(
+    "provider, env_var, field",
+    [("anthropic", "ANTHROPIC_API_KEY", "anthropic_api_key"), ("openai", "OPENAI_API_KEY", "openai_api_key")],
+)
+def test_api_key_is_stripped_of_surrounding_whitespace(monkeypatch, provider, env_var, field):
+    monkeypatch.setenv(env_var, "  sk-test-key\n")
+
+    model = get_chat_model(provider)
+
+    assert getattr(model, field).get_secret_value() == "sk-test-key"
+
+
 def test_model_name_can_be_overridden():
     assert get_chat_model("openai", model="gpt-6-luna").model_name == "gpt-6-luna"
 
