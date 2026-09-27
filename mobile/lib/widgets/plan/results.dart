@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/plan.dart';
 import 'package:favorite_places/providers/user_places.dart';
+import 'package:favorite_places/screens/route_map.dart';
 import 'package:favorite_places/services/agent_service.dart';
 import 'package:favorite_places/utils/static_map.dart';
 import 'package:favorite_places/widgets/plan/common.dart';
@@ -118,10 +119,25 @@ class _RouteCard extends StatelessWidget {
             errorBuilder: (context, error, stack) => const SizedBox(height: 176),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Text(
-              span,
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    span,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RouteMapScreen(stops: [for (final (_, place) in stops) place]),
+                    ),
+                  ),
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: const Text('Open in Maps'),
+                ),
+              ],
             ),
           ),
         ],
