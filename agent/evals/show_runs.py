@@ -48,7 +48,9 @@ def main() -> None:
             print("recommendations:")
             for rec in outputs["recommendations"]:
                 when = f" ({rec['suggested_time']})" if rec.get("suggested_time") else ""
-                print(f"  {rec['order']}. {rec['title']} [{rec['place_id']}, {rec.get('category', '?')}]{when}: {rec['reason']}")
+                print(
+                    f"  {rec['order']}. {rec['title']} [{rec['place_id']}, {rec.get('category', '?')}]{when}: {rec['reason']}"
+                )
                 print(f"     saved {saved_text(run.inputs['uid'], rec['place_id'])}")
             read = {
                 place_id
@@ -56,9 +58,13 @@ def main() -> None:
                 if call["name"] == "get_place_details"
                 for place_id in call["args"].get("place_ids") or []
             }
-            unread = [rec["place_id"] for rec in outputs["recommendations"] if rec["place_id"] not in read]
+            unread = [
+                rec["place_id"] for rec in outputs["recommendations"] if rec["place_id"] not in read
+            ]
             print(f"unread in answer: {unread}")
-            print(f"ungrounded: {outputs['ungrounded_place_ids']}  rejected: {outputs['rejected_place_ids']}")
+            print(
+                f"ungrounded: {outputs['ungrounded_place_ids']}  rejected: {outputs['rejected_place_ids']}"
+            )
             print(f"overview: {outputs['overview']}")
 
 

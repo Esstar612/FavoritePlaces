@@ -9,7 +9,9 @@ FIELDS = ["id", "parent_run_ids", "total_tokens", "total_cost"]
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Tokens and cost spent by the fallback node.")
-    parser.add_argument("--experiment", action="append", required=True, metavar="PROVIDER=EXPERIMENT")
+    parser.add_argument(
+        "--experiment", action="append", required=True, metavar="PROVIDER=EXPERIMENT"
+    )
     args = parser.parse_args()
 
     client = Client()
@@ -28,7 +30,9 @@ def main() -> None:
         print(f"\n=== {provider} ({experiment})")
         print(f"agent runs {len(roots)}, fallback ran in {len(fallback_ids)}")
         if fallback_ids and not in_fallback:
-            print("no model calls could be matched to a fallback run; the totals below are incomplete")
+            print(
+                "no model calls could be matched to a fallback run; the totals below are incomplete"
+            )
         for label, runs in (("all model calls", llm_runs), ("fallback model calls", in_fallback)):
             tokens = sum(run.total_tokens or 0 for run in runs)
             costs = [run.total_cost for run in runs if run.total_cost is not None]

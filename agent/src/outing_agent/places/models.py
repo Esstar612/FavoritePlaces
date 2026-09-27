@@ -4,8 +4,16 @@ from typing import Literal, get_args
 from pydantic import BaseModel, Field
 
 Category = Literal[
-    "restaurant", "cafe", "park", "museum", "shopping",
-    "entertainment", "hotel", "bar", "gym", "other",
+    "restaurant",
+    "cafe",
+    "park",
+    "museum",
+    "shopping",
+    "entertainment",
+    "hotel",
+    "bar",
+    "gym",
+    "other",
 ]
 CATEGORIES: tuple[str, ...] = get_args(Category)
 

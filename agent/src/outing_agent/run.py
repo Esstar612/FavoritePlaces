@@ -167,7 +167,10 @@ def collect_tool_calls(messages: list[AnyMessage], fallback_calls: list[dict]) -
             for call in message.tool_calls
             if call["id"] in answered
         ],
-        *[ToolCall(name=call["name"], args=call["args"], source="graph") for call in fallback_calls],
+        *[
+            ToolCall(name=call["name"], args=call["args"], source="graph")
+            for call in fallback_calls
+        ],
     ]
 
 

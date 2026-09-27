@@ -35,7 +35,10 @@ def test_openai_model_settings():
 
 @pytest.mark.parametrize(
     "provider, env_var, field",
-    [("anthropic", "ANTHROPIC_API_KEY", "anthropic_api_key"), ("openai", "OPENAI_API_KEY", "openai_api_key")],
+    [
+        ("anthropic", "ANTHROPIC_API_KEY", "anthropic_api_key"),
+        ("openai", "OPENAI_API_KEY", "openai_api_key"),
+    ],
 )
 def test_api_key_is_stripped_of_surrounding_whitespace(monkeypatch, provider, env_var, field):
     monkeypatch.setenv(env_var, "  sk-test-key\n")

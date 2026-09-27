@@ -27,17 +27,19 @@ def main() -> None:
     graph = build_graph(get_chat_model(provider))
 
     started = time.perf_counter()
-    with tracing_v2_enabled(project_name=os.environ.get("LANGSMITH_PROJECT")) as tracer:
-        with get_usage_metadata_callback() as usage:
-            result = run_recommendation(
-                graph,
-                args.message,
-                uid=DEMO_UID,
-                store=FixturePlacesStore(),
-                store_kind="fixture",
-                provider=provider,
-                model=model,
-            )
+    with (
+        tracing_v2_enabled(project_name=os.environ.get("LANGSMITH_PROJECT")) as tracer,
+        get_usage_metadata_callback() as usage,
+    ):
+        result = run_recommendation(
+            graph,
+            args.message,
+            uid=DEMO_UID,
+            store=FixturePlacesStore(),
+            store_kind="fixture",
+            provider=provider,
+            model=model,
+        )
     elapsed = time.perf_counter() - started
 
     print(f"provider: {provider}  model: {model}  run_id: {result.run_id}")

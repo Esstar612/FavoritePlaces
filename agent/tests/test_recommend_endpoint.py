@@ -81,7 +81,10 @@ def test_recommend_over_the_limit_is_429_with_retry_after(client):
 def test_unauthenticated_request_is_401_even_when_limits_are_used_up(client):
     exhausted = RateLimiter(1, 3600)
     exhausted.allow(app_module.GLOBAL_KEY)
-    client.app.dependency_overrides[app_module.get_rate_limiters] = lambda: (RateLimiter(1, 3600), exhausted)
+    client.app.dependency_overrides[app_module.get_rate_limiters] = lambda: (
+        RateLimiter(1, 3600),
+        exhausted,
+    )
 
     response = client.post("/recommend", json={"message": "coffee"})
 

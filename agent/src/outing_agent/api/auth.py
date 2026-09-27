@@ -11,7 +11,12 @@ log = logging.getLogger(__name__)
 
 _bearer = HTTPBearer(auto_error=False)
 
-_TOKEN_ERRORS = (auth.InvalidIdTokenError, auth.UserDisabledError, auth.UserNotFoundError, ValueError)
+_TOKEN_ERRORS = (
+    auth.InvalidIdTokenError,
+    auth.UserDisabledError,
+    auth.UserNotFoundError,
+    ValueError,
+)
 
 
 def _unauthorized() -> HTTPException:

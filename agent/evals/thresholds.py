@@ -50,7 +50,9 @@ def main() -> None:
     )
     parser.add_argument("--cases", choices=sorted(CASE_SETS), default="main")
     parser.add_argument("--confidence", type=float, default=0.90)
-    parser.add_argument("--write", action="store_true", help=f"save the thresholds to {THRESHOLDS_FILE.name}")
+    parser.add_argument(
+        "--write", action="store_true", help=f"save the thresholds to {THRESHOLDS_FILE.name}"
+    )
     args = parser.parse_args()
     computed = {
         "confidence": args.confidence,

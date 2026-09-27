@@ -13,7 +13,9 @@ def _recommended(outputs: dict) -> list[str]:
 
 
 def _model_calls(outputs: dict) -> list[dict]:
-    return [call for call in outputs.get("tool_calls", []) if call.get("source", "model") == "model"]
+    return [
+        call for call in outputs.get("tool_calls", []) if call.get("source", "model") == "model"
+    ]
 
 
 def _calls(outputs: dict, name: str) -> list[dict]:
@@ -60,7 +62,9 @@ def expected_recall(outputs: dict, reference_outputs: dict) -> dict:
 
 def details_before_recommending(outputs: dict, reference_outputs: dict) -> dict:
     recommended = set(
-        outputs.get("draft_grounded_place_ids", []) if _fallback_ran(outputs) else _recommended(outputs)
+        outputs.get("draft_grounded_place_ids", [])
+        if _fallback_ran(outputs)
+        else _recommended(outputs)
     )
     if not recommended:
         return {"key": "details_before_recommending", "score": None}

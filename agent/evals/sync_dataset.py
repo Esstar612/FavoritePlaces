@@ -23,7 +23,9 @@ def changed_fields(current, example: dict) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Upsert eval cases into a LangSmith dataset.")
     parser.add_argument("--cases", choices=sorted(CASE_SETS), default="main")
-    parser.add_argument("--dry-run", action="store_true", help="show what would change without writing")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="show what would change without writing"
+    )
     args = parser.parse_args()
     dataset_name = CASE_SETS[args.cases][0]
 
