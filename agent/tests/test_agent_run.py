@@ -404,3 +404,46 @@ def test_reported_confidence_is_the_drafts_even_after_the_fallback(monkeypatch, 
     ]
     assert logged[-1]["confidence"] == 0.8
     assert logged[-1]["escalated"] is False
+
+
+CLARIFICATION = {
+    "original_message": "Plan my Saturday",
+    "question": "Morning or evening?",
+    "answer": "Morning, coffee first.",
+}
+
+
+def test_request_text_without_a_clarification_is_the_message():
+    assert run_module.request_text("coffee", None) == "coffee"
+
+
+def test_request_text_combines_the_clarification_into_one_message():
+    text = run_module.request_text(None, CLARIFICATION)
+
+    assert text == (
+        "Plan my Saturday\n\nYou asked: Morning or evening?\nMy answer: Morning, coffee first."
+    )
+
+
+def test_clarified_request_recommends_even_with_zero_confidence(monkeypatch):
+    _with_threshold(monkeypatch, 0.6)
+    model = scripted_model([BLUE_BOTTLE, TARTINE], confidence=0.0)
+
+    result = run_recommendation(
+        build_graph(model),
+        None,
+        clarification=CLARIFICATION,
+        uid=DEMO_UID,
+        store=FixturePlacesStore(),
+        store_kind="fixture",
+        provider="fake",
+        model="scripted",
+    )
+
+    assert result.escalated is False
+    assert result.clarification_round is True
+    assert result.clarifying_question is None
+    assert [rec.place_id for rec in result.recommendations] == [BLUE_BOTTLE, TARTINE]
+    (finalize_messages,) = model.finalize_inputs
+    assert finalize_messages[1].content == run_module.request_text(None, CLARIFICATION)
+    assert "do not ask another" in finalize_messages[-1].content

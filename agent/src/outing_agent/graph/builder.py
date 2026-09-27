@@ -49,6 +49,10 @@ or more for a clear request; about 0.5 when you had to guess what they want;
 0.2 or less when you can't tell. Always give clarifying_question: the one short
 question that would most improve the answer, even when you are confident."""
 
+CLARIFIED_NOTE = """
+
+The user has already answered a clarifying question. Recommend; do not ask another."""
+
 FALLBACK_PROMPT = """Your draft answer used places you had not read, or it is an
 itinerary without a route. The draft and the missing tool results are below:
 details for each recommended place you had not read, and a route if the draft
@@ -114,6 +118,12 @@ def fallback_calls(state: AgentState) -> list[dict]:
     return calls
 
 
+def finalize_prompt(state: AgentState) -> str:
+    if state.get("clarification_allowed", True):
+        return FINALIZE_PROMPT
+    return FINALIZE_PROMPT + CLARIFIED_NOTE
+
+
 def should_escalate(state: AgentState) -> bool:
     draft = state.get("recommendation_set")
     threshold = state.get("confidence_threshold")
@@ -167,7 +177,7 @@ def build_graph(model: BaseChatModel):
             [
                 SystemMessage(SYSTEM_PROMPT),
                 *_answered_messages(state["messages"]),
-                HumanMessage(FINALIZE_PROMPT),
+                HumanMessage(finalize_prompt(state)),
             ]
         )
         return {"recommendation_set": result}

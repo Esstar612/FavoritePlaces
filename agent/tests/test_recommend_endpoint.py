@@ -91,3 +91,39 @@ def test_unauthenticated_request_is_401_even_when_limits_are_used_up(client):
     response = client.post("/recommend", json={"message": "coffee"})
 
     assert response.status_code == 401
+
+
+CLARIFICATION = {
+    "original_message": "Plan my Saturday",
+    "question": "Morning or evening?",
+    "answer": "Morning, coffee first.",
+}
+
+
+def test_recommend_accepts_a_clarification(client):
+    client.app.dependency_overrides[get_verified_uid] = lambda: DEMO_UID
+
+    response = client.post("/recommend", json={"clarification": CLARIFICATION})
+
+    assert response.status_code == 200
+    assert response.json()["recommendations"]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"message": "coffee", "clarification": CLARIFICATION},
+        {"clarification": {**CLARIFICATION, "answer": ""}},
+        {"clarification": {**CLARIFICATION, "question": "x" * 501}},
+        {"clarification": {**CLARIFICATION, "uid": "someone-else"}},
+        {"clarification": {"original_message": "Plan my Saturday", "answer": "Morning"}},
+    ],
+    ids=["neither", "both", "empty-answer", "long-question", "extra-field", "missing-question"],
+)
+def test_recommend_rejects_bad_clarification_requests(client, body):
+    client.app.dependency_overrides[get_verified_uid] = lambda: DEMO_UID
+
+    response = client.post("/recommend", json=body)
+
+    assert response.status_code == 422

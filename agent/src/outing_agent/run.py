@@ -49,12 +49,24 @@ class RecommendationResult(BaseModel):
     confidence: float | None
     escalated: bool
     clarifying_question: str | None
+    clarification_round: bool
+
+
+def request_text(message: str | None, clarification: dict | None) -> str:
+    if clarification is None:
+        return message
+    return (
+        f"{clarification['original_message']}\n\n"
+        f"You asked: {clarification['question']}\n"
+        f"My answer: {clarification['answer']}"
+    )
 
 
 def run_recommendation(
     graph,
-    message: str,
+    message: str | None,
     *,
+    clarification: dict | None = None,
     uid: str,
     store: PlacesStore,
     store_kind: str,
@@ -73,12 +85,12 @@ def run_recommendation(
     with tracing:
         state = graph.invoke(
             {
-                "messages": [HumanMessage(message)],
+                "messages": [HumanMessage(request_text(message, clarification))],
                 "recommendation_set": None,
                 "draft_set": None,
                 "fallback_calls": [],
                 "fallback_removed_place_ids": [],
-                "clarification_allowed": True,
+                "clarification_allowed": clarification is None,
                 "confidence_threshold": confidence_threshold(provider),
                 "escalated": False,
             },
@@ -113,6 +125,7 @@ def run_recommendation(
         confidence=draft_set.confidence if draft_set else None,
         escalated=escalated,
         clarifying_question=draft_set.clarifying_question if escalated and draft_set else None,
+        clarification_round=clarification is not None,
     )
     _log_run(result, store_kind)
     return result
@@ -206,6 +219,7 @@ def _log_run(result: RecommendationResult, store_kind: str) -> None:
                 "fallback_removed_place_ids": result.fallback_removed_place_ids,
                 "confidence": result.confidence,
                 "escalated": result.escalated,
+                "clarification_round": result.clarification_round,
             }
         )
     )
