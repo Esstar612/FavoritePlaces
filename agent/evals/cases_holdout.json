@@ -23,6 +23,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan",
@@ -51,6 +52,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan",
@@ -78,10 +80,72 @@
     ],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan",
       "holdout"
+    ]
+  },
+  {
+    "id": "holdout-vague-weekend",
+    "uid": "demo-user",
+    "message": "What should I do this weekend?",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "expects_clarification": true,
+    "tags": [
+      "vague",
+      "clarification"
+    ]
+  },
+  {
+    "id": "holdout-vague-bored",
+    "uid": "planner-user",
+    "message": "I'm bored.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "expects_clarification": true,
+    "tags": [
+      "vague",
+      "clarification"
+    ]
+  },
+  {
+    "id": "holdout-clear-quiet-cafe",
+    "uid": "planner-user",
+    "message": "A quiet cafe where I can work this afternoon.",
+    "expected_place_ids": [
+      "planner-workshop-cafe"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "expects_clarification": false,
+    "tags": [
+      "single-stop"
     ]
   }
 ]

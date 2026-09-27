@@ -27,7 +27,8 @@ def make_target(provider: str):
     def target(inputs: dict) -> dict:
         result = run_recommendation(
             graph,
-            inputs["message"],
+            inputs.get("message"),
+            clarification=inputs.get("clarification"),
             uid=inputs["uid"],
             store=FixturePlacesStore(),
             store_kind="fixture",

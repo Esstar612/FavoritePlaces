@@ -19,6 +19,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "single-stop"
     ]
@@ -48,6 +49,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "note-faithfulness",
@@ -75,6 +77,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "single-stop"
     ]
@@ -101,6 +104,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "single-stop"
     ]
@@ -126,6 +130,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "single-stop",
       "note-faithfulness"
@@ -155,6 +160,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "constraint"
@@ -184,6 +190,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": 2,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "constraint"
@@ -212,6 +219,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan"
@@ -242,6 +250,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan"
@@ -267,6 +276,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "single-stop"
     ]
@@ -291,6 +301,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "single-stop"
     ]
@@ -310,6 +321,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "nothing-fits"
     ]
@@ -329,6 +341,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "nothing-fits"
     ]
@@ -346,6 +359,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "nothing-fits",
       "adversarial"
@@ -369,6 +383,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "cross-user",
       "nothing-fits"
@@ -400,6 +415,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "cross-user",
       "single-stop"
@@ -431,6 +447,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "cross-user",
       "single-stop"
@@ -449,9 +466,10 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": true,
     "tags": [
       "vague",
-      "step-4"
+      "clarification"
     ]
   },
   {
@@ -480,6 +498,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan"
@@ -513,6 +532,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan"
@@ -544,6 +564,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan"
@@ -576,6 +597,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan"
@@ -601,6 +623,7 @@
     ],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan"
@@ -631,6 +654,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan"
@@ -658,6 +682,7 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": 3,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan",
@@ -684,6 +709,7 @@
     "requested_sequence": [],
     "sequence_ordered": false,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "single-stop",
       "no-notes"
@@ -716,10 +742,131 @@
     ],
     "sequence_ordered": true,
     "requested_stop_count": null,
+    "expects_clarification": false,
     "tags": [
       "multi-stop",
       "day-plan",
       "no-notes"
+    ]
+  },
+  {
+    "id": "vague-plan-my-saturday",
+    "uid": "planner-user",
+    "message": "Plan my Saturday.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "expects_clarification": true,
+    "tags": [
+      "vague",
+      "clarification"
+    ]
+  },
+  {
+    "id": "vague-go-out",
+    "uid": "sparse-user",
+    "message": "I want to go out.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "expects_clarification": true,
+    "tags": [
+      "vague",
+      "clarification"
+    ]
+  },
+  {
+    "id": "vague-ideas-for-later",
+    "uid": "other-user",
+    "message": "Any ideas for later?",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "expects_clarification": true,
+    "tags": [
+      "vague",
+      "clarification"
+    ]
+  },
+  {
+    "id": "clarified-saturday-morning",
+    "uid": "planner-user",
+    "clarification": {
+      "original_message": "Plan my Saturday.",
+      "question": "Would you like a morning or an evening plan, and what kinds of stops?",
+      "answer": "Morning: good coffee first, then a walk by the water."
+    },
+    "expected_place_ids": [
+      "planner-sightglass",
+      "planner-crissy-field",
+      "planner-lands-end"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "cafe",
+      "park"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": 2,
+    "expects_clarification": false,
+    "tags": [
+      "multi-stop",
+      "day-plan",
+      "clarification-round"
+    ]
+  },
+  {
+    "id": "clarified-bay-view",
+    "uid": "demo-user",
+    "clarification": {
+      "original_message": "Somewhere nice.",
+      "question": "What kind of place are you in the mood for?",
+      "answer": "Somewhere with a view of the bay."
+    },
+    "expected_place_ids": [
+      "demo-blue-bottle"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "expects_clarification": false,
+    "tags": [
+      "single-stop",
+      "clarification-round"
     ]
   }
 ]
