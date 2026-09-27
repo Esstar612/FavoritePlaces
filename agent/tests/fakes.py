@@ -25,7 +25,11 @@ class ScriptedChatModel(GenericFakeChatModel):
 
 
 def recommendation_set(
-    place_ids: list[str], kind: str = "options", reason: str = "fits the request"
+    place_ids: list[str],
+    kind: str = "options",
+    reason: str = "fits the request",
+    confidence: float = 0.9,
+    question: str = "Morning or evening?",
 ) -> RecommendationSet:
     return RecommendationSet(
         overview="A slow morning of coffee and pastries.",
@@ -34,6 +38,8 @@ def recommendation_set(
             Recommendation(place_id=place_id, order=i + 1, reason=reason)
             for i, place_id in enumerate(place_ids)
         ],
+        confidence=confidence,
+        clarifying_question=question,
     )
 
 
@@ -47,6 +53,7 @@ def scripted_model(
     kind: str = "options",
     turns: list[AIMessage] | None = None,
     revised: RecommendationSet | None = None,
+    confidence: float = 0.9,
 ) -> ScriptedChatModel:
     if turns is None:
         turns = [
@@ -55,7 +62,7 @@ def scripted_model(
                 "get_place_details", {"place_ids": ["demo-blue-bottle", "demo-tartine"]}, "call_2"
             ),
         ]
-    finals = [recommendation_set(recommended_ids, kind)]
+    finals = [recommendation_set(recommended_ids, kind, confidence=confidence)]
     if revised is not None:
         finals.append(revised)
     return ScriptedChatModel(
@@ -96,5 +103,7 @@ def looping_model(final_place_id: str) -> LoopingChatModel:
         overview="Coffee.",
         kind="options",
         recommendations=[Recommendation(place_id=final_place_id, order=1, reason="fits")],
+        confidence=0.9,
+        clarifying_question="Which area?",
     )
     return LoopingChatModel(messages=turns, final=final)

@@ -54,6 +54,8 @@ class RecommendResponse(BaseModel):
     overview: str
     recommendations: list[RecommendedPlace]
     tool_calls: list[ToolCall]
+    confidence: float | None
+    clarifying_question: str | None
 
 
 @lru_cache(maxsize=1)

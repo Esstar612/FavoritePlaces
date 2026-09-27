@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -19,7 +20,14 @@ REQUEST_TIMEOUT_S = 60
 
 RANDOM_SEED = 42
 
-CONFIDENCE_THRESHOLD: float | None = None
+CONFIDENCE_THRESHOLDS_FILE = Path(__file__).with_name("confidence_thresholds.json")
+
+
+def confidence_threshold(provider: str, path: Path = CONFIDENCE_THRESHOLDS_FILE) -> float | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())["providers"].get(provider)
+
 
 PLACES_STORE = os.environ.get("PLACES_STORE", "").strip() or "fixture"
 if PLACES_STORE not in ("fixture", "firestore"):

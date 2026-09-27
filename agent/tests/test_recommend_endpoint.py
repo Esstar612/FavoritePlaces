@@ -46,6 +46,8 @@ def test_recommend_returns_only_the_users_grounded_places(client):
     assert body["overview"]
     assert "ungrounded_place_ids" not in body
     assert "rejected_place_ids" not in body
+    assert body["confidence"] == 0.9
+    assert body["clarifying_question"] is None
 
 
 def test_recommend_rejects_a_uid_in_the_body(client):

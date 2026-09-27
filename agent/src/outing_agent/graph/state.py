@@ -34,6 +34,17 @@ class RecommendationSet(BaseModel):
         "asked for ideas or to choose between places, or the request matches neither."
     )
     recommendations: list[Recommendation]
+    confidence: float = Field(
+        ge=0,
+        le=1,
+        description="How clearly the request tells you which saved places would fit "
+        "(a kind of place, an activity, or a quality that ranks them), 0 to 1. "
+        "A time alone, or a quality like 'nice', does not make it clear. "
+        "Not about whether any saved place matches.",
+    )
+    clarifying_question: str = Field(
+        description="The one short question that would most improve this answer"
+    )
 
 
 class AgentState(TypedDict):
@@ -42,4 +53,7 @@ class AgentState(TypedDict):
     draft_set: RecommendationSet | None
     fallback_calls: list[dict]
     fallback_removed_place_ids: list[str]
+    clarification_allowed: bool
+    confidence_threshold: float | None
+    escalated: bool
     remaining_steps: RemainingSteps

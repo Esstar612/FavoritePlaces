@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMes
 from langsmith import tracing_context
 from pydantic import BaseModel
 
+from outing_agent.config import confidence_threshold
 from outing_agent.graph.state import AgentContext, RecommendationSet
 from outing_agent.places.models import Place
 from outing_agent.places.store import PlacesStore, RequestScopedPlacesStore
@@ -45,6 +46,9 @@ class RecommendationResult(BaseModel):
     draft_place_ids: list[str]
     draft_grounded_place_ids: list[str]
     fallback_removed_place_ids: list[str]
+    confidence: float | None
+    escalated: bool
+    clarifying_question: str | None
 
 
 def run_recommendation(
@@ -74,6 +78,9 @@ def run_recommendation(
                 "draft_set": None,
                 "fallback_calls": [],
                 "fallback_removed_place_ids": [],
+                "clarification_allowed": True,
+                "confidence_threshold": confidence_threshold(provider),
+                "escalated": False,
             },
             config=config,
             context=AgentContext(uid=uid, store=scoped_store),
@@ -84,14 +91,17 @@ def run_recommendation(
     retrieved = retrieved_place_ids(messages)
     final_set = state.get("recommendation_set")
     draft_set = state.get("draft_set") or final_set
+    escalated = state.get("escalated", False)
     kept, ungrounded, rejected = ground_recommendations(final_set, owned, retrieved)
+    if escalated:
+        kept = []
     draft_kept, _, _ = ground_recommendations(draft_set, owned, retrieved)
     draft_recs = sorted(draft_set.recommendations, key=lambda r: r.order) if draft_set else []
     result = RecommendationResult(
         run_id=run_id,
         provider=provider,
         model=model,
-        overview=final_set.overview if final_set else "",
+        overview=final_set.overview if final_set and not escalated else "",
         kind=final_set.kind if final_set else None,
         recommendations=kept,
         tool_calls=collect_tool_calls(messages, state.get("fallback_calls", [])),
@@ -100,6 +110,9 @@ def run_recommendation(
         draft_place_ids=[rec.place_id for rec in draft_recs],
         draft_grounded_place_ids=[rec.place_id for rec in draft_kept],
         fallback_removed_place_ids=state.get("fallback_removed_place_ids", []),
+        confidence=draft_set.confidence if draft_set else None,
+        escalated=escalated,
+        clarifying_question=draft_set.clarifying_question if escalated and draft_set else None,
     )
     _log_run(result, store_kind)
     return result
@@ -191,6 +204,8 @@ def _log_run(result: RecommendationResult, store_kind: str) -> None:
                 "draft_place_ids": result.draft_place_ids,
                 "draft_grounded_place_ids": result.draft_grounded_place_ids,
                 "fallback_removed_place_ids": result.fallback_removed_place_ids,
+                "confidence": result.confidence,
+                "escalated": result.escalated,
             }
         )
     )
