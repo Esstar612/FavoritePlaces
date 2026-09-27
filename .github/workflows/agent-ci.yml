@@ -44,6 +44,7 @@ jobs:
           cache-dependency-path: agent/pyproject.toml
       - run: pip install -e ".[dev]"
       - run: ruff check .
+      - run: ruff format --check .
       - run: pytest -q
 
   container:
