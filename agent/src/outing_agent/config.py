@@ -26,3 +26,17 @@ if PLACES_STORE not in ("fixture", "firestore"):
     raise ValueError(f"PLACES_STORE must be 'fixture' or 'firestore', got {PLACES_STORE!r}")
 
 CHECK_REVOKED = os.environ.get("CHECK_REVOKED", "").strip().lower() in ("1", "true", "yes")
+
+
+def _positive_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    value = int(raw)
+    if value < 1:
+        raise ValueError(f"{name} must be a positive integer, got {raw!r}")
+    return value
+
+
+RECOMMEND_LIMIT_PER_USER_PER_HOUR = _positive_int("RECOMMEND_LIMIT_PER_USER_PER_HOUR", 20)
+RECOMMEND_LIMIT_GLOBAL_PER_HOUR = _positive_int("RECOMMEND_LIMIT_GLOBAL_PER_HOUR", 200)
