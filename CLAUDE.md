@@ -66,6 +66,15 @@ that recommends outings from a user's saved places using tool calling.
   test explanations. If unsure, leave it out.
 - Commit messages carry no AI attribution (no Co-Authored-By trailers).
 
+## Pull requests
+
+- Keep every PR small enough to review in one sitting: one concern per PR, and
+  about 400 changed lines of code or fewer, not counting generated files,
+  fixtures or test data. Split larger work into stacked PRs based on each other.
+- Never close a PR to restructure it. Edit its title, description, base or
+  commits instead.
+- See "Keep PRs reviewable" in `CONTRIBUTING.md`.
+
 ## Build log
 
 - After every completed step, append a dated entry to `agent/BUILD_LOG.md`
