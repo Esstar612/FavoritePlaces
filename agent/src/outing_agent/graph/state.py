@@ -54,6 +54,7 @@ class AgentState(TypedDict):
     fallback_calls: list[dict]
     fallback_removed_place_ids: list[str]
     clarification_allowed: bool
+    start_only: bool
     confidence_threshold: float | None
     escalated: bool
     remaining_steps: RemainingSteps

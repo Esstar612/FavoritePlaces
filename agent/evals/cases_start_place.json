@@ -1,0 +1,87 @@
+[
+  {
+    "id": "start-coffee-then-art",
+    "uid": "demo-user",
+    "start_place_id": "demo-blue-bottle",
+    "message": "some art",
+    "expected_place_ids": [
+      "demo-blue-bottle",
+      "demo-sfmoma"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "cafe",
+      "museum"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": 2,
+    "expects_clarification": false,
+    "tags": [
+      "start-place",
+      "multi-stop"
+    ]
+  },
+  {
+    "id": "start-alone",
+    "uid": "demo-user",
+    "start_place_id": "demo-blue-bottle",
+    "expected_place_ids": [
+      "demo-blue-bottle"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "expects_clarification": false,
+    "tags": [
+      "start-place"
+    ]
+  },
+  {
+    "id": "start-with-clarification",
+    "uid": "demo-user",
+    "start_place_id": "demo-blue-bottle",
+    "clarification": {
+      "original_message": "Somewhere nice after.",
+      "question": "What kind of place?",
+      "answer": "A quiet park."
+    },
+    "expected_place_ids": [
+      "demo-blue-bottle",
+      "demo-golden-gate-park"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "cafe",
+      "park"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": 2,
+    "expects_clarification": false,
+    "tags": [
+      "start-place",
+      "clarification-round"
+    ]
+  }
+]

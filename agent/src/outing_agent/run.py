@@ -66,16 +66,45 @@ class RecommendationResult(BaseModel):
     escalated: bool
     clarifying_question: str | None
     clarification_round: bool
+    start_place_id: str | None = None
 
 
-def request_text(message: str | None, clarification: dict | None) -> str:
+START_REST = "whatever fits best after it."
+
+
+class UnknownStartPlace(ValueError):
+    pass
+
+
+def request_text(
+    message: str | None, clarification: dict | None, start: Place | None = None
+) -> str:
     if clarification is None:
-        return message
-    return (
-        f"{clarification['original_message']}\n\n"
-        f"You asked: {clarification['question']}\n"
-        f"My answer: {clarification['answer']}"
+        text = message
+    else:
+        text = (
+            f"{clarification['original_message']}\n\n"
+            f"You asked: {clarification['question']}\n"
+            f"My answer: {clarification['answer']}"
+        )
+    if start is None:
+        return text
+    return f"Plan an outing that starts at {start.title} ({start.id}), then {text or START_REST}"
+
+
+def anchor_start(
+    stops: list[RecommendedPlace], start: Place, kind: str | None
+) -> tuple[list[RecommendedPlace], str | None]:
+    others = [stop for stop in stops if stop.place_id != start.id]
+    if not others:
+        return stops, kind
+    if kind != "itinerary":
+        others = others[:1]
+    first = next((stop for stop in stops if stop.place_id == start.id), None) or RecommendedPlace(
+        place_id=start.id, title=start.title, category=start.category, order=1, reason=""
     )
+    ordered = [first, *others]
+    return [stop.model_copy(update={"order": i}) for i, stop in enumerate(ordered, 1)], "itinerary"
 
 
 def run_recommendation(
@@ -83,6 +112,7 @@ def run_recommendation(
     message: str | None,
     *,
     clarification: dict | None = None,
+    start_place_id: str | None = None,
     uid: str,
     store: PlacesStore,
     store_kind: str,
@@ -90,6 +120,12 @@ def run_recommendation(
     model: str,
 ) -> RecommendationResult:
     scoped_store = RequestScopedPlacesStore(store, uid)
+    start = None
+    if start_place_id is not None:
+        start = next((p for p in scoped_store.list_places(uid) if p.id == start_place_id), None)
+        if start is None:
+            raise UnknownStartPlace(start_place_id)
+    start_only = start is not None and message is None and clarification is None
     run_id = str(uuid.uuid4())
     config = {
         "run_id": run_id,
@@ -101,12 +137,13 @@ def run_recommendation(
     with tracing:
         state = graph.invoke(
             {
-                "messages": [HumanMessage(request_text(message, clarification))],
+                "messages": [HumanMessage(request_text(message, clarification, start))],
                 "recommendation_set": None,
                 "draft_set": None,
                 "fallback_calls": [],
                 "fallback_removed_place_ids": [],
-                "clarification_allowed": clarification is None,
+                "clarification_allowed": clarification is None and not start_only,
+                "start_only": start_only,
                 "confidence_threshold": confidence_threshold(provider),
                 "escalated": False,
             },
@@ -117,12 +154,17 @@ def run_recommendation(
     messages = state["messages"]
     owned = {place.id: place for place in scoped_store.list_places(uid)}
     retrieved = retrieved_place_ids(messages)
+    if start is not None:
+        retrieved.add(start.id)
     final_set = state.get("recommendation_set")
     draft_set = state.get("draft_set") or final_set
     escalated = state.get("escalated", False)
     kept, ungrounded, rejected = ground_recommendations(final_set, owned, retrieved)
+    kind = final_set.kind if final_set else None
     if escalated:
         kept = []
+    elif start is not None:
+        kept, kind = anchor_start(kept, start, kind)
     draft_kept, _, _ = ground_recommendations(draft_set, owned, retrieved)
     draft_recs = sorted(draft_set.recommendations, key=lambda r: r.order) if draft_set else []
     result = RecommendationResult(
@@ -130,9 +172,9 @@ def run_recommendation(
         provider=provider,
         model=model,
         overview=final_set.overview if final_set and not escalated else "",
-        kind=final_set.kind if final_set else None,
+        kind=kind,
         recommendations=kept,
-        legs=walking_legs(kept, owned, final_set.kind if final_set else None),
+        legs=walking_legs(kept, owned, kind),
         tool_calls=collect_tool_calls(messages, state.get("fallback_calls", [])),
         ungrounded_place_ids=ungrounded,
         rejected_place_ids=rejected,
@@ -143,6 +185,7 @@ def run_recommendation(
         escalated=escalated,
         clarifying_question=draft_set.clarifying_question if escalated and draft_set else None,
         clarification_round=clarification is not None,
+        start_place_id=start_place_id,
     )
     _log_run(result, store_kind)
     return result
@@ -275,6 +318,7 @@ def _log_run(result: RecommendationResult, store_kind: str) -> None:
                 "confidence": result.confidence,
                 "escalated": result.escalated,
                 "clarification_round": result.clarification_round,
+                "start_place_id": result.start_place_id,
             }
         )
     )

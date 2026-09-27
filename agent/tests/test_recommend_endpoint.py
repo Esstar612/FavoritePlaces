@@ -168,3 +168,31 @@ def test_preflight_from_other_origins_is_refused(client, origin):
 
     assert response.status_code == 400
     assert "access-control-allow-origin" not in response.headers
+
+
+@pytest.mark.parametrize("start_place_id", ["other-dolores-park", "made-up-id"])
+def test_recommend_rejects_a_start_place_that_is_not_the_users(client, start_place_id):
+    client.app.dependency_overrides[get_verified_uid] = lambda: DEMO_UID
+
+    response = client.post(
+        "/recommend", json={"message": "coffee", "start_place_id": start_place_id}
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"start_place_id": "demo-blue-bottle"},
+        {"start_place_id": "demo-blue-bottle", "clarification": CLARIFICATION},
+    ],
+    ids=["alone", "with-clarification"],
+)
+def test_recommend_accepts_a_start_place(client, body):
+    client.app.dependency_overrides[get_verified_uid] = lambda: DEMO_UID
+
+    response = client.post("/recommend", json=body)
+
+    assert response.status_code == 200
+    assert response.json()["recommendations"][0]["place_id"] == "demo-blue-bottle"

@@ -279,7 +279,10 @@ def test_case_is_consistent_with_fixtures(case):
             assert case["requested_stop_count"] <= len(case["expected_place_ids"])
     user_categories = {place.category for place in owned[case["uid"]].values()}
     assert set(case["requested_sequence"]) <= user_categories
-    assert ("message" in case) != ("clarification" in case)
+    assert not ("message" in case and "clarification" in case)
+    assert "message" in case or "clarification" in case or "start_place_id" in case
+    if "start_place_id" in case:
+        assert case["start_place_id"] in owned[case["uid"]]
     assert isinstance(case["expects_clarification"], bool)
     if "clarification" in case:
         assert set(case["clarification"]) == {"original_message", "question", "answer"}
@@ -338,3 +341,13 @@ def test_escalated_run_does_not_pass_as_nothing_fits():
 
 def test_clarification_scorers_are_report_only():
     assert {"asks_when_vague", "no_needless_question"} <= scorers.REPORT_ONLY
+
+
+def test_details_before_recommending_ignores_the_start_place():
+    result = scorers.details_before_recommending(
+        outputs(recs=["a", "b"], tool_calls=[("get_place_details", {"place_ids": ["b"]})]),
+        {},
+        inputs={"start_place_id": "a"},
+    )
+
+    assert result["score"] == 1
