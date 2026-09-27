@@ -935,16 +935,33 @@ Evals gate every deploy: a push to `main` runs 162 scored agent runs across Clau
 
   All gates and thresholds passed on the holdout. These are the figures measured on cases the thresholds weren't picked from.
 
+- **Gate thresholds recomputed from Run A** (`thresholds.py --confidence 0.99 --write`, stacked with the escalation PR so one CI run checks both):
+
+  | Scorer | Claude (old → new) | GPT (old → new) |
+  |---|---|---|
+  | details_before_recommending | 0.90 → 0.80 | 0.90 → 0.90 |
+  | required_tools_used | 0.90 → 0.85 | 0.90 → 0.90 |
+  | route_when_multi_stop | 0.80 → 0.70 | 0.90 → 0.90 |
+  | tool_call_budget | 0.85 → 0.85 | 0.85 → 0.80 |
+
+  - Every other threshold is unchanged. The source intervals: Claude details [0.826, 1.000], required tools [0.852, 1.000], route [0.714, 1.000]; GPT budget [0.844, 1.000].
+  - **Why Run A and not a new run:** it used the final prompt. No clear run fell below the new confidence thresholds, so clear runs behave the same with escalation on.
+  - **The one difference:** the 12 vague runs per provider were scored by `details_before_recommending` in Run A. With escalation on they return no places and aren't scored.
+
 ### Observations
 - **Model confidence separates vague from clear requests well for both providers.** Neither asked needlessly on any clear run, in-sample or on the holdout.
 - **GPT's vague runs cluster just under its 0.55 threshold,** consistent with the rubric's "about 0.5". The fixed tie rule chose 0.55, even though every threshold from 0.55 to 0.90 scored the same. The holdout's 6 of 6 suggests the thin margin holds.
 - **Claude missed 1 of 6 held-out vague runs.** That's too few to justify changing the rule.
+- **Every recomputed threshold got looser or stayed the same.**
+  - Run A's means are close to the fifth baseline's, but its run-to-run spread is wider, and each threshold is a lower bound from a single run.
+  - **Claude's route threshold of 0.70 is a weak regression check.** The fallback still guarantees a route for every itinerary, so users are protected.
+  - Basing thresholds on several runs of the same prompt would tighten them. That's a later change.
 
 ### Problems hit and how we solved them
 - **Rebasing PR 3 onto the amended PR 2 first replayed PR 2's old commit and conflicted.** `git rebase --onto` replayed only PR 3's own commit.
 - **Dropbox again changed files mid-operation during a branch switch.** Retrying on a clean tree worked.
 
 ### Next
-- Merge PR 6 (Run B, the first CI run with escalation on).
-- PR 7: `thresholds.py --write` from Run B.
+- Merge PR 6 and PR 7 as one stack: Run B, the first CI run with escalation on, gated by the recomputed thresholds.
+- Later: let `thresholds.py` pool several experiments of the same prompt.
 - A live check with a guest account: a vague request, then the clarification round trip, then the `recommendation_run` log.
