@@ -179,6 +179,7 @@ def test_recommend_rejects_a_start_place_that_is_not_the_users(client, start_pla
     )
 
     assert response.status_code == 422
+    assert response.json()["detail"] == "start_place_id is not one of your places"
 
 
 @pytest.mark.parametrize(
