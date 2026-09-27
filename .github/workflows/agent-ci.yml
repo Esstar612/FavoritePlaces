@@ -2,10 +2,6 @@ name: Outing agent CI
 
 on:
   pull_request:
-    paths:
-      - 'agent/**'
-      - '!agent/**/*.md'
-      - '.github/workflows/agent-ci.yml'
   push:
     branches: [ main ]
     paths:
