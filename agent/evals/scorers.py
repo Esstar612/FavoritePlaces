@@ -5,7 +5,7 @@ DAY_PLAN_BASE_TOOL_CALLS = 2
 DAY_PLAN_CALLS_PER_STOP = 2
 
 GATES = {"grounded": 1.0, "no_forbidden": 1.0}
-REPORT_ONLY = {"fallback_rate"}
+REPORT_ONLY = {"fallback_rate", "asks_when_vague", "no_needless_question"}
 
 
 def _recommended(outputs: dict) -> list[str]:
@@ -93,7 +93,21 @@ def required_tools_used(outputs: dict, reference_outputs: dict) -> dict:
 def empty_when_nothing_fits(outputs: dict, reference_outputs: dict) -> dict:
     if not reference_outputs["expects_empty"]:
         return {"key": "empty_when_nothing_fits", "score": None}
+    if outputs.get("escalated"):
+        return {"key": "empty_when_nothing_fits", "score": 0}
     return {"key": "empty_when_nothing_fits", "score": int(not _recommended(outputs))}
+
+
+def asks_when_vague(outputs: dict, reference_outputs: dict) -> dict:
+    if not reference_outputs.get("expects_clarification") or "escalated" not in outputs:
+        return {"key": "asks_when_vague", "score": None}
+    return {"key": "asks_when_vague", "score": int(outputs["escalated"])}
+
+
+def no_needless_question(outputs: dict, reference_outputs: dict) -> dict:
+    if reference_outputs.get("expects_clarification") or "escalated" not in outputs:
+        return {"key": "no_needless_question", "score": None}
+    return {"key": "no_needless_question", "score": int(not outputs["escalated"])}
 
 
 def _recommended_categories(outputs: dict) -> list[str]:
@@ -156,4 +170,6 @@ EVALUATORS = [
     respects_sequence,
     tool_call_budget,
     fallback_rate,
+    asks_when_vague,
+    no_needless_question,
 ]

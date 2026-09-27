@@ -35,7 +35,23 @@ and list the stops in visiting order. Set kind to options only when the user
 asks for ideas or asks you to choose between places, and list the best fit
 first. If the request matches neither rule, set kind to options. If the user
 asks for a number of stops, recommend exactly that many, or fewer if not
-enough saved places fit."""
+enough saved places fit.
+
+Also give confidence, a number from 0 to 1 for how clearly you understood what
+the user wants. It is not about whether any saved place matches: a clear
+request with no matching saved places still gets high confidence, and you say
+plainly that nothing fits. A request is clear when it tells you which of their
+saved places would fit: a kind of place, an activity, or a quality or mood such
+as memorable, romantic, relaxing or quiet. A quality counts only if it would
+rank their saved places differently, so "nice" does not count. A time on its
+own, like "this weekend" or "Saturday", does not make a request clear. Use 0.9
+or more for a clear request; about 0.5 when you had to guess what they want;
+0.2 or less when you can't tell. Always give clarifying_question: the one short
+question that would most improve the answer, even when you are confident."""
+
+CLARIFIED_NOTE = """
+
+The user has already answered a clarifying question. Recommend; do not ask another."""
 
 FALLBACK_PROMPT = """Your draft answer used places you had not read, or it is an
 itinerary without a route. The draft and the missing tool results are below:
@@ -102,8 +118,31 @@ def fallback_calls(state: AgentState) -> list[dict]:
     return calls
 
 
+def finalize_prompt(state: AgentState) -> str:
+    if state.get("clarification_allowed", True):
+        return FINALIZE_PROMPT
+    return FINALIZE_PROMPT + CLARIFIED_NOTE
+
+
+def should_escalate(state: AgentState) -> bool:
+    draft = state.get("recommendation_set")
+    threshold = state.get("confidence_threshold")
+    return bool(
+        draft
+        and state.get("clarification_allowed")
+        and threshold is not None
+        and draft.confidence < threshold
+    )
+
+
 def route_after_finalize(state: AgentState) -> str:
+    if should_escalate(state):
+        return "escalate"
     return "fallback" if fallback_calls(state) else END
+
+
+def escalate(state: AgentState) -> dict:
+    return {"escalated": True}
 
 
 def _keep_draft_places(
@@ -138,7 +177,7 @@ def build_graph(model: BaseChatModel):
             [
                 SystemMessage(SYSTEM_PROMPT),
                 *_answered_messages(state["messages"]),
-                HumanMessage(FINALIZE_PROMPT),
+                HumanMessage(finalize_prompt(state)),
             ]
         )
         return {"recommendation_set": result}
@@ -173,6 +212,7 @@ def build_graph(model: BaseChatModel):
     graph.add_node("tools", ToolNode(TOOLS))
     graph.add_node("finalize", finalize)
     graph.add_node("fallback", fallback)
+    graph.add_node("escalate", escalate)
     graph.add_edge(START, "agent")
     graph.add_conditional_edges(
         "agent",
@@ -181,7 +221,10 @@ def build_graph(model: BaseChatModel):
     )
     graph.add_edge("tools", "agent")
     graph.add_conditional_edges(
-        "finalize", route_after_finalize, {"fallback": "fallback", END: END}
+        "finalize",
+        route_after_finalize,
+        {"escalate": "escalate", "fallback": "fallback", END: END},
     )
     graph.add_edge("fallback", END)
+    graph.add_edge("escalate", END)
     return graph.compile()

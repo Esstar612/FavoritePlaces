@@ -157,7 +157,7 @@ agent/
 │   ├── graph/        LangGraph graph and state
 │   ├── tools/        tools the agent can call
 │   ├── providers/    Anthropic and OpenAI behind one interface
-│   └── config.py     provider, models, seed, confidence threshold
+│   └── config.py     provider, models, limits, confidence thresholds file
 ├── tests/
 ├── evals/
 └── docs/

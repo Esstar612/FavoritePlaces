@@ -45,6 +45,10 @@ def main() -> None:
                 print(f"draft: {outputs.get('draft_place_ids')}")
                 print(f"removed by fallback: {outputs.get('fallback_removed_place_ids')}")
             print(f"kind: {outputs.get('kind')}")
+            print(
+                f"confidence: {outputs.get('confidence')}  escalated: {outputs.get('escalated')}"
+                f"  question: {outputs.get('clarifying_question')}"
+            )
             print("recommendations:")
             for rec in outputs["recommendations"]:
                 when = f" ({rec['suggested_time']})" if rec.get("suggested_time") else ""

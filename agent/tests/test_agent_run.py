@@ -336,3 +336,114 @@ def test_fallback_does_not_read_places_the_model_never_retrieved():
     assert result.ungrounded_place_ids == [OWNED_NOT_RETRIEVED]
     assert result.draft_place_ids == [BLUE_BOTTLE, OWNED_NOT_RETRIEVED]
     assert result.draft_grounded_place_ids == [BLUE_BOTTLE]
+
+
+def _with_threshold(monkeypatch, threshold):
+    monkeypatch.setattr(run_module, "confidence_threshold", lambda provider: threshold)
+
+
+def test_low_confidence_escalates_with_the_question_and_no_places(monkeypatch):
+    _with_threshold(monkeypatch, 0.6)
+    model = scripted_model(
+        [BLUE_BOTTLE, TARTINE], kind="itinerary", turns=FIVE_STAR_SEARCH, confidence=0.3
+    )
+
+    result = _run_model(model)
+
+    assert result.escalated is True
+    assert result.recommendations == []
+    assert result.overview == ""
+    assert result.clarifying_question == "Morning or evening?"
+    assert result.confidence == 0.3
+    assert len(model.finalize_inputs) == 1
+    assert {call.source for call in result.tool_calls} == {"model"}
+    assert result.draft_place_ids == [BLUE_BOTTLE, TARTINE]
+
+
+def test_confident_answer_is_not_escalated(monkeypatch):
+    _with_threshold(monkeypatch, 0.6)
+    model = scripted_model([BLUE_BOTTLE, TARTINE], confidence=0.9)
+
+    result = _run_model(model)
+
+    assert result.escalated is False
+    assert result.clarifying_question is None
+    assert [rec.place_id for rec in result.recommendations] == [BLUE_BOTTLE, TARTINE]
+    assert result.overview
+
+
+def test_no_threshold_never_escalates(monkeypatch):
+    _with_threshold(monkeypatch, None)
+    model = scripted_model([BLUE_BOTTLE, TARTINE], confidence=0.0)
+
+    result = _run_model(model)
+
+    assert result.escalated is False
+    assert result.clarifying_question is None
+    assert result.recommendations
+
+
+def test_reported_confidence_is_the_drafts_even_after_the_fallback(monkeypatch, caplog):
+    _with_threshold(monkeypatch, 0.5)
+    model = scripted_model(
+        [BLUE_BOTTLE, TARTINE],
+        kind="itinerary",
+        turns=FIVE_STAR_SEARCH,
+        confidence=0.8,
+        revised=recommendation_set([BLUE_BOTTLE, TARTINE], "itinerary", confidence=0.2),
+    )
+
+    with caplog.at_level("INFO", logger="outing_agent.run"):
+        result = _run_model(model)
+
+    assert len(model.finalize_inputs) == 2
+    assert result.confidence == 0.8
+    assert result.escalated is False
+    logged = [
+        json.loads(r.getMessage()) for r in caplog.records if "recommendation_run" in r.getMessage()
+    ]
+    assert logged[-1]["confidence"] == 0.8
+    assert logged[-1]["escalated"] is False
+
+
+CLARIFICATION = {
+    "original_message": "Plan my Saturday",
+    "question": "Morning or evening?",
+    "answer": "Morning, coffee first.",
+}
+
+
+def test_request_text_without_a_clarification_is_the_message():
+    assert run_module.request_text("coffee", None) == "coffee"
+
+
+def test_request_text_combines_the_clarification_into_one_message():
+    text = run_module.request_text(None, CLARIFICATION)
+
+    assert text == (
+        "Plan my Saturday\n\nYou asked: Morning or evening?\nMy answer: Morning, coffee first."
+    )
+
+
+def test_clarified_request_recommends_even_with_zero_confidence(monkeypatch):
+    _with_threshold(monkeypatch, 0.6)
+    model = scripted_model([BLUE_BOTTLE, TARTINE], confidence=0.0)
+
+    result = run_recommendation(
+        build_graph(model),
+        None,
+        clarification=CLARIFICATION,
+        uid=DEMO_UID,
+        store=FixturePlacesStore(),
+        store_kind="fixture",
+        provider="fake",
+        model="scripted",
+    )
+
+    assert result.escalated is False
+    assert result.clarification_round is True
+    assert result.clarifying_question is None
+    assert [rec.place_id for rec in result.recommendations] == [BLUE_BOTTLE, TARTINE]
+    (finalize_messages,) = model.finalize_inputs
+    assert finalize_messages[1].content == run_module.request_text(None, CLARIFICATION)
+    assert "do not ask another" in finalize_messages[-1].content

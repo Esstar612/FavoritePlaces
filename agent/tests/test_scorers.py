@@ -279,6 +279,15 @@ def test_case_is_consistent_with_fixtures(case):
             assert case["requested_stop_count"] <= len(case["expected_place_ids"])
     user_categories = {place.category for place in owned[case["uid"]].values()}
     assert set(case["requested_sequence"]) <= user_categories
+    assert ("message" in case) != ("clarification" in case)
+    assert isinstance(case["expects_clarification"], bool)
+    if "clarification" in case:
+        assert set(case["clarification"]) == {"original_message", "question", "answer"}
+        assert all(1 <= len(value) <= 500 for value in case["clarification"].values())
+        assert case["expects_clarification"] is False
+    if case["expects_clarification"]:
+        assert not case["expected_place_ids"]
+        assert not case["expects_empty"]
 
 
 @pytest.mark.parametrize("case", ALL_CASES, ids=lambda case: case["id"])
@@ -286,3 +295,46 @@ def test_required_tools_are_real_tools(case):
     from outing_agent.tools.places_tools import TOOLS
 
     assert set(case["required_tools"]) <= {tool.name for tool in TOOLS}
+
+
+def escalated_outputs(escalated):
+    return {**outputs(), "escalated": escalated}
+
+
+def test_asks_when_vague_scores_only_vague_cases():
+    vague = reference(expects_clarification=True)
+    assert score(scorers.asks_when_vague, escalated_outputs(True), vague) == 1
+    assert score(scorers.asks_when_vague, escalated_outputs(False), vague) == 0
+    assert score(scorers.asks_when_vague, escalated_outputs(True), reference()) is None
+
+
+def test_no_needless_question_scores_only_clear_cases():
+    clear = reference(expects_clarification=False)
+    assert score(scorers.no_needless_question, escalated_outputs(False), clear) == 1
+    assert score(scorers.no_needless_question, escalated_outputs(True), clear) == 0
+    assert (
+        score(
+            scorers.no_needless_question,
+            escalated_outputs(False),
+            reference(expects_clarification=True),
+        )
+        is None
+    )
+
+
+def test_clarification_scorers_skip_outputs_without_the_escalated_field():
+    assert score(scorers.asks_when_vague, outputs(), reference(expects_clarification=True)) is None
+    assert (
+        score(scorers.no_needless_question, outputs(), reference(expects_clarification=False))
+        is None
+    )
+
+
+def test_escalated_run_does_not_pass_as_nothing_fits():
+    nothing_fits = reference(expects_empty=True)
+    assert score(scorers.empty_when_nothing_fits, escalated_outputs(True), nothing_fits) == 0
+    assert score(scorers.empty_when_nothing_fits, escalated_outputs(False), nothing_fits) == 1
+
+
+def test_clarification_scorers_are_report_only():
+    assert {"asks_when_vague", "no_needless_question"} <= scorers.REPORT_ONLY

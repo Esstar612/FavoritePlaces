@@ -6,7 +6,7 @@ CASE_SETS = {
     "holdout": ("outing-agent-holdout-v1", Path(__file__).with_name("cases_holdout.json")),
 }
 
-INPUT_KEYS = ("uid", "message")
+INPUT_KEYS = ("uid", "message", "clarification")
 REFERENCE_KEYS = (
     "expected_place_ids",
     "forbidden_place_ids",
@@ -17,6 +17,7 @@ REFERENCE_KEYS = (
     "requested_sequence",
     "sequence_ordered",
     "requested_stop_count",
+    "expects_clarification",
 )
 
 
@@ -31,7 +32,7 @@ def load_cases(case_set: str = "main") -> list[dict]:
 
 def to_example(case: dict) -> dict:
     return {
-        "inputs": {key: case[key] for key in INPUT_KEYS},
+        "inputs": {key: case[key] for key in INPUT_KEYS if key in case},
         "outputs": {key: case[key] for key in REFERENCE_KEYS},
         "metadata": {"case_id": case["id"], "tags": case["tags"]},
     }

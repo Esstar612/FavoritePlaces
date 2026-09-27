@@ -5,7 +5,7 @@ from functools import lru_cache
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from outing_agent import config
 from outing_agent.api.auth import get_verified_uid
@@ -40,11 +40,26 @@ class Agent:
     model: str
 
 
+class Clarification(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    original_message: str = Field(min_length=1, max_length=500)
+    question: str = Field(min_length=1, max_length=500)
+    answer: str = Field(min_length=1, max_length=500)
+
+
 class RecommendRequest(BaseModel):
     # A uid in the body is rejected outright; it only ever comes from the verified token.
     model_config = ConfigDict(extra="forbid")
 
-    message: str = Field(min_length=1, max_length=500)
+    message: str | None = Field(default=None, min_length=1, max_length=500)
+    clarification: Clarification | None = None
+
+    @model_validator(mode="after")
+    def _one_of(self):
+        if (self.message is None) == (self.clarification is None):
+            raise ValueError("send either message or clarification")
+        return self
 
 
 class RecommendResponse(BaseModel):
@@ -54,6 +69,8 @@ class RecommendResponse(BaseModel):
     overview: str
     recommendations: list[RecommendedPlace]
     tool_calls: list[ToolCall]
+    confidence: float | None
+    clarifying_question: str | None
 
 
 @lru_cache(maxsize=1)
@@ -108,6 +125,7 @@ def recommend(
     result = run_recommendation(
         agent.graph,
         body.message,
+        clarification=body.clarification.model_dump() if body.clarification else None,
         uid=uid,
         store=store,
         store_kind=config.PLACES_STORE,

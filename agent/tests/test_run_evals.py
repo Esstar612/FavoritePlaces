@@ -53,3 +53,36 @@ def test_thresholds_file_is_read_by_provider(tmp_path):
     path.write_text(json.dumps({"confidence": 0.99, "providers": THRESHOLDS}))
 
     assert load_thresholds(path) == THRESHOLDS
+
+
+def test_eval_target_passes_clarification_through(monkeypatch):
+    from evals import run_evals
+
+    calls = []
+
+    class Result:
+        def model_dump(self):
+            return {}
+
+    def fake_run(graph, message, **kwargs):
+        calls.append((message, kwargs))
+        return Result()
+
+    monkeypatch.setattr(run_evals, "get_chat_model", lambda provider: None)
+    monkeypatch.setattr(run_evals, "build_graph", lambda model: "graph")
+    monkeypatch.setattr(run_evals, "run_recommendation", fake_run)
+    clarification = {
+        "original_message": "Plan my Saturday.",
+        "question": "Morning?",
+        "answer": "Yes",
+    }
+    target = run_evals.make_target("anthropic")
+
+    target({"uid": "planner-user", "clarification": clarification})
+    target({"uid": "demo-user", "message": "coffee"})
+
+    assert calls[0][0] is None
+    assert calls[0][1]["clarification"] == clarification
+    assert calls[0][1]["uid"] == "planner-user"
+    assert calls[1][0] == "coffee"
+    assert calls[1][1]["clarification"] is None
