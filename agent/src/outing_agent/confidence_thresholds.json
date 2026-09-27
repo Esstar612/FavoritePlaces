@@ -1,0 +1,13 @@
+{
+  "max_needless": 0.05,
+  "min_asked_vague": 0.5,
+  "case_set": "main",
+  "experiments": {
+    "anthropic": "outing-agent-main-anthropic-648ff8bd",
+    "openai": "outing-agent-main-openai-81389cb3"
+  },
+  "providers": {
+    "anthropic": 0.35,
+    "openai": 0.55
+  }
+}
