@@ -227,6 +227,90 @@ void main() {
       );
     });
 
+    for (final (label, call, expected) in [
+      (
+        'alone',
+        (AgentService s) => s.recommend(startPlaceId: 'p1'),
+        {'start_place_id': 'p1'},
+      ),
+      (
+        'with a message',
+        (AgentService s) => s.recommend(message: 'art', startPlaceId: 'p1'),
+        {'message': 'art', 'start_place_id': 'p1'},
+      ),
+      (
+        'with a clarification',
+        (AgentService s) => s.recommend(
+              clarification: const Clarification(
+                originalMessage: 'Somewhere nice after.',
+                question: 'What kind of place?',
+                answer: 'A quiet park.',
+              ),
+              startPlaceId: 'p1',
+            ),
+        {
+          'clarification': {
+            'original_message': 'Somewhere nice after.',
+            'question': 'What kind of place?',
+            'answer': 'A quiet park.',
+          },
+          'start_place_id': 'p1',
+        },
+      ),
+    ]) {
+      test('sends a start place $label', () async {
+        late http.Request sent;
+        final service = _service((request) {
+          sent = request;
+          return http.Response(jsonEncode(_response(recommendations: [_rec('p1', 1)])), 200);
+        });
+
+        await call(service);
+
+        expect(jsonDecode(sent.body), expected);
+      });
+    }
+
+    final placeGone = jsonEncode({'detail': startPlaceGoneDetail});
+
+    for (final (label, call) in [
+      ('alone', (AgentService s) => s.recommend(startPlaceId: 'p1')),
+      ('with a message', (AgentService s) => s.recommend(message: 'art', startPlaceId: 'p1')),
+    ]) {
+      test('a 422 saying the start place is gone, $label', () async {
+        final service = _service((_) => http.Response(placeGone, 422));
+
+        await expectLater(
+          call(service),
+          throwsA(isA<AgentBadRequestException>()
+              .having((e) => e.message, 'message', 'That place is no longer saved.')),
+        );
+      });
+    }
+
+    for (final (label, body) in [
+      (
+        'a pydantic error list',
+        jsonEncode({
+          'detail': [
+            {'type': 'string_too_long', 'loc': ['body', 'message'], 'msg': 'too long'},
+          ],
+        }),
+      ),
+      ('an empty body', ''),
+      ('a body that is not JSON', '<html>bad gateway</html>'),
+    ]) {
+      test('a 422 with $label says try shorter', () async {
+        final service = _service((_) => http.Response(body, 422));
+
+        await expectLater(
+          service.recommend(message: 'art', startPlaceId: 'p1'),
+          throwsA(isA<AgentBadRequestException>()
+              .having((e) => e.message, 'message', contains('Try a shorter one'))),
+        );
+      });
+    }
+
     test('a network failure is unavailable', () async {
       final service = AgentService(
         client: MockClient((_) async => throw http.ClientException('offline')),

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:favorite_places/config.dart';
 
 const maxRequestChars = 500;
+const startPlaceGoneDetail = 'start_place_id is not one of your places';
 
 // Clips by code point, which is how the API counts its 500-character limit.
 String clipForAgent(String text) => String.fromCharCodes(text.runes.take(maxRequestChars));
@@ -130,6 +131,8 @@ class AgentAuthException extends AgentException {
 class AgentBadRequestException extends AgentException {
   const AgentBadRequestException()
       : super("The planner couldn't read that request. Try a shorter one.");
+
+  const AgentBadRequestException.startPlaceGone() : super('That place is no longer saved.');
 }
 
 class AgentRateLimitException extends AgentException {
@@ -147,7 +150,11 @@ class AgentUnavailableException extends AgentException {
 }
 
 abstract interface class PlanAgent {
-  Future<PlanResult> recommend({String? message, Clarification? clarification});
+  Future<PlanResult> recommend({
+    String? message,
+    Clarification? clarification,
+    String? startPlaceId,
+  });
 }
 
 class AgentService implements PlanAgent {
@@ -159,8 +166,13 @@ class AgentService implements PlanAgent {
   final Future<String?> Function() _idToken;
 
   @override
-  Future<PlanResult> recommend({String? message, Clarification? clarification}) async {
-    assert((message == null) != (clarification == null));
+  Future<PlanResult> recommend({
+    String? message,
+    Clarification? clarification,
+    String? startPlaceId,
+  }) async {
+    assert(message == null || clarification == null);
+    assert(message != null || clarification != null || startPlaceId != null);
     final token = await _idToken();
     if (token == null) throw const AgentAuthException();
 
@@ -170,9 +182,11 @@ class AgentService implements PlanAgent {
           .post(
             Uri.parse('${AppConfig.agentUrl}/recommend'),
             headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
-            body: jsonEncode(clarification != null
-                ? {'clarification': clarification.toJson()}
-                : {'message': clipForAgent(message!)}),
+            body: jsonEncode({
+              if (message != null) 'message': clipForAgent(message),
+              if (clarification != null) 'clarification': clarification.toJson(),
+              if (startPlaceId != null) 'start_place_id': startPlaceId,
+            }),
           )
           .timeout(const Duration(seconds: 120));
     } catch (_) {
@@ -182,7 +196,7 @@ class AgentService implements PlanAgent {
     return switch (response.statusCode) {
       200 => _parse(response.body),
       401 => throw const AgentAuthException(),
-      422 => throw const AgentBadRequestException(),
+      422 => throw _badRequest(response.body),
       429 => throw AgentRateLimitException(_retryAfter(response)),
       _ => throw const AgentUnavailableException(),
     };
@@ -196,6 +210,18 @@ class AgentService implements PlanAgent {
     } on TypeError {
       throw const AgentUnavailableException();
     }
+  }
+
+  AgentBadRequestException _badRequest(String body) {
+    final Object? json;
+    try {
+      json = jsonDecode(body);
+    } on FormatException {
+      return const AgentBadRequestException();
+    }
+    return json is Map && json['detail'] == startPlaceGoneDetail
+        ? const AgentBadRequestException.startPlaceGone()
+        : const AgentBadRequestException();
   }
 
   Duration? _retryAfter(http.Response response) {
