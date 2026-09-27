@@ -24,3 +24,10 @@ dist/
 # Don't ignore example files
 !.env.example
 !*.example.*
+# Agent service (Python)
+agent/.env
+agent/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

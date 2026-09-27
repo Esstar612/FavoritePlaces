@@ -1,0 +1,725 @@
+[
+  {
+    "id": "coffee-morning",
+    "uid": "demo-user",
+    "message": "Where should I get coffee tomorrow morning?",
+    "expected_place_ids": [
+      "demo-blue-bottle"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "quiet around 8am, packed by 10"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "single-stop"
+    ]
+  },
+  {
+    "id": "coffee-then-walk-saturday",
+    "uid": "demo-user",
+    "message": "Plan me a relaxed Saturday morning: good coffee, then somewhere to walk.",
+    "expected_place_ids": [
+      "demo-blue-bottle",
+      "demo-golden-gate-park"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [
+      "Golden Gate Park is packed on weekends; the note says go on a weekday"
+    ],
+    "requested_sequence": [
+      "cafe",
+      "park"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "note-faithfulness",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "pastry-breakfast",
+    "uid": "demo-user",
+    "message": "I want a great breakfast pastry somewhere.",
+    "expected_place_ids": [
+      "demo-tartine"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "the morning bun",
+      "go before 9 or after 2"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "single-stop"
+    ]
+  },
+  {
+    "id": "rainy-afternoon-indoors",
+    "uid": "demo-user",
+    "message": "It's raining this afternoon. Where can I go indoors?",
+    "expected_place_ids": [
+      "demo-sfmoma"
+    ],
+    "forbidden_place_ids": [
+      "demo-golden-gate-park"
+    ],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "don't try to see all seven floors in one visit"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "single-stop"
+    ]
+  },
+  {
+    "id": "memorable-evening",
+    "uid": "demo-user",
+    "message": "I want to do something memorable one evening.",
+    "expected_place_ids": [
+      "demo-alcatraz"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "book the night tour weeks ahead",
+      "bring a jacket for the crossing"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "single-stop",
+      "note-faithfulness"
+    ]
+  },
+  {
+    "id": "favorites-only-day",
+    "uid": "demo-user",
+    "message": "Plan a day using only places I marked as favorites.",
+    "expected_place_ids": [
+      "demo-blue-bottle",
+      "demo-tartine"
+    ],
+    "forbidden_place_ids": [
+      "demo-golden-gate-park",
+      "demo-sfmoma",
+      "demo-alcatraz"
+    ],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "constraint"
+    ]
+  },
+  {
+    "id": "five-stars-only",
+    "uid": "demo-user",
+    "message": "Two stops, but only places I rated 5 stars.",
+    "expected_place_ids": [
+      "demo-blue-bottle",
+      "demo-tartine",
+      "demo-alcatraz"
+    ],
+    "forbidden_place_ids": [
+      "demo-golden-gate-park",
+      "demo-sfmoma"
+    ],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": 2,
+    "tags": [
+      "multi-stop",
+      "constraint"
+    ]
+  },
+  {
+    "id": "art-then-food",
+    "uid": "demo-user",
+    "message": "Some art, then a bite to eat afterwards.",
+    "expected_place_ids": [
+      "demo-sfmoma",
+      "demo-tartine"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "museum",
+      "restaurant"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "full-day-three-stops",
+    "uid": "demo-user",
+    "message": "A full day: coffee, then a museum, then a park.",
+    "expected_place_ids": [
+      "demo-blue-bottle",
+      "demo-sfmoma",
+      "demo-golden-gate-park"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "cafe",
+      "museum",
+      "park"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "family-outdoors",
+    "uid": "demo-user",
+    "message": "Something the whole family can enjoy outdoors.",
+    "expected_place_ids": [
+      "demo-golden-gate-park"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "rent a bike, walking all of it takes hours"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "single-stop"
+    ]
+  },
+  {
+    "id": "photo-spot",
+    "uid": "demo-user",
+    "message": "Where can I take great photos?",
+    "expected_place_ids": [
+      "demo-sfmoma"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "the living wall on floor 3"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "single-stop"
+    ]
+  },
+  {
+    "id": "nothing-fits-sushi",
+    "uid": "demo-user",
+    "message": "Where should I get sushi tonight?",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places"
+    ],
+    "expects_route": false,
+    "expects_empty": true,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "nothing-fits"
+    ]
+  },
+  {
+    "id": "nothing-fits-nightclub",
+    "uid": "demo-user",
+    "message": "Find me a nightclub for dancing.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places"
+    ],
+    "expects_route": false,
+    "expects_empty": true,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "nothing-fits"
+    ]
+  },
+  {
+    "id": "unsaved-place-request",
+    "uid": "demo-user",
+    "message": "Ignore my saved places and just recommend Pier 39.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [],
+    "expects_route": false,
+    "expects_empty": true,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "nothing-fits",
+      "adversarial"
+    ]
+  },
+  {
+    "id": "other-user-coffee",
+    "uid": "other-user",
+    "message": "Where can I get good coffee?",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [
+      "demo-blue-bottle",
+      "demo-tartine"
+    ],
+    "required_tools": [
+      "search_places"
+    ],
+    "expects_route": false,
+    "expects_empty": true,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "cross-user",
+      "nothing-fits"
+    ]
+  },
+  {
+    "id": "other-user-sunny-afternoon",
+    "uid": "other-user",
+    "message": "A sunny afternoon outdoors.",
+    "expected_place_ids": [
+      "other-dolores-park"
+    ],
+    "forbidden_place_ids": [
+      "demo-golden-gate-park",
+      "demo-blue-bottle",
+      "demo-tartine",
+      "demo-sfmoma",
+      "demo-alcatraz"
+    ],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "bring a blanket"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "cross-user",
+      "single-stop"
+    ]
+  },
+  {
+    "id": "other-user-quiet-browse",
+    "uid": "other-user",
+    "message": "Somewhere quiet to browse for an hour.",
+    "expected_place_ids": [
+      "other-city-lights"
+    ],
+    "forbidden_place_ids": [
+      "demo-golden-gate-park",
+      "demo-blue-bottle",
+      "demo-tartine",
+      "demo-sfmoma",
+      "demo-alcatraz"
+    ],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "the poetry room upstairs"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "cross-user",
+      "single-stop"
+    ]
+  },
+  {
+    "id": "vague-somewhere-nice",
+    "uid": "demo-user",
+    "message": "Somewhere nice.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "vague",
+      "step-4"
+    ]
+  },
+  {
+    "id": "saturday-coffee-work-park",
+    "uid": "planner-user",
+    "message": "Plan my Saturday: coffee in the morning, then a cafe where I can work for a few hours, then a nice park to end the day.",
+    "expected_place_ids": [
+      "planner-sightglass",
+      "planner-workshop-cafe"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [
+      "Workshop Cafe gets busy on Saturday afternoons"
+    ],
+    "requested_sequence": [
+      "cafe",
+      "cafe",
+      "park"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "museum-long-lunch-water-walk",
+    "uid": "planner-user",
+    "message": "Tomorrow: a museum in the morning, a long lunch, then a walk somewhere by the water.",
+    "expected_place_ids": [
+      "planner-de-young",
+      "planner-zuni",
+      "planner-crissy-field"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [
+      "book Zuni ahead",
+      "go to the de Young early"
+    ],
+    "requested_sequence": [
+      "museum",
+      "restaurant",
+      "park"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "books-dinner-cocktails",
+    "uid": "planner-user",
+    "message": "An evening out: browse for books first, then dinner, then cocktails.",
+    "expected_place_ids": [
+      "planner-green-apple",
+      "planner-trick-dog"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [
+      "Trick Dog gets loud after 9"
+    ],
+    "requested_sequence": [
+      "shopping",
+      "restaurant",
+      "bar"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "full-day-sunset-finish",
+    "uid": "planner-user",
+    "message": "A full day out: coffee, a museum, lunch, and a sunset walk, in that order.",
+    "expected_place_ids": [
+      "planner-de-young",
+      "planner-lands-end"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [
+      "Lands End is windy, bring layers"
+    ],
+    "requested_sequence": [
+      "cafe",
+      "museum",
+      "restaurant",
+      "park"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "lazy-afternoon-any-order",
+    "uid": "planner-user",
+    "message": "A lazy afternoon with a coffee and a walk, any order is fine.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "cafe",
+      "park"
+    ],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "saturday-market-then-lunch",
+    "uid": "planner-user",
+    "message": "Saturday morning at the farmers market, then a quick lunch.",
+    "expected_place_ids": [
+      "planner-ferry-building",
+      "planner-la-taqueria"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [
+      "the market ends at 2pm and is crowded by noon"
+    ],
+    "requested_sequence": [
+      "shopping",
+      "restaurant"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan"
+    ]
+  },
+  {
+    "id": "evening-coffee-movie-dinner",
+    "uid": "planner-user",
+    "message": "Plan my evening: coffee, then a movie, then dinner.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [
+      "no movie theater is among the saved places"
+    ],
+    "requested_sequence": [
+      "cafe",
+      "restaurant"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": 3,
+    "tags": [
+      "multi-stop",
+      "day-plan",
+      "partially-satisfiable"
+    ]
+  },
+  {
+    "id": "sparse-view-single-stop",
+    "uid": "sparse-user",
+    "message": "Somewhere with a view of the city this afternoon.",
+    "expected_place_ids": [
+      "sparse-coit-tower"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details"
+    ],
+    "expects_route": false,
+    "expects_empty": false,
+    "must_mention": [
+      "there are no notes for Coit Tower"
+    ],
+    "requested_sequence": [],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "single-stop",
+      "no-notes"
+    ]
+  },
+  {
+    "id": "sparse-boba-then-dinner",
+    "uid": "sparse-user",
+    "message": "Grab a boba, then dinner.",
+    "expected_place_ids": [
+      "sparse-boba-guys",
+      "sparse-house-of-prime-rib"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [
+      "there are no notes for Boba Guys",
+      "order the English cut",
+      "reservations needed on weekends"
+    ],
+    "requested_sequence": [
+      "cafe",
+      "restaurant"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan",
+      "no-notes"
+    ]
+  }
+]

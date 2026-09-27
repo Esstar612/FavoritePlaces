@@ -1,0 +1,87 @@
+[
+  {
+    "id": "holdout-work-lunch-books",
+    "uid": "planner-user",
+    "message": "Work from a cafe in the morning, lunch nearby, then a bookstore to unwind.",
+    "expected_place_ids": [
+      "planner-workshop-cafe",
+      "planner-green-apple"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "cafe",
+      "restaurant",
+      "shopping"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan",
+      "holdout"
+    ]
+  },
+  {
+    "id": "holdout-date-night",
+    "uid": "planner-user",
+    "message": "Date night: a nice dinner, then drinks.",
+    "expected_place_ids": [
+      "planner-trick-dog"
+    ],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "restaurant",
+      "bar"
+    ],
+    "sequence_ordered": true,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan",
+      "holdout"
+    ]
+  },
+  {
+    "id": "holdout-visitor-tour",
+    "uid": "planner-user",
+    "message": "A friend is visiting. Show them something scenic, a museum, and great food, you pick the order.",
+    "expected_place_ids": [],
+    "forbidden_place_ids": [],
+    "required_tools": [
+      "search_places",
+      "get_place_details",
+      "plan_route"
+    ],
+    "expects_route": true,
+    "expects_empty": false,
+    "must_mention": [],
+    "requested_sequence": [
+      "park",
+      "museum",
+      "restaurant"
+    ],
+    "sequence_ordered": false,
+    "requested_stop_count": null,
+    "tags": [
+      "multi-stop",
+      "day-plan",
+      "holdout"
+    ]
+  }
+]

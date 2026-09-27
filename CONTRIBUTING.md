@@ -127,6 +127,15 @@ We actively welcome your pull requests!
 5. **Update the README.md** if needed
 6. **Create the Pull Request** with a clear description
 
+### Keep PRs reviewable
+
+A reviewer should be able to read a PR carefully in one sitting.
+
+- **One concern per PR.** A feature, a fix, a refactor and a docs change are separate PRs.
+- **Aim for about 400 changed lines of code or fewer.** Generated files, fixtures and test data don't count. This is a guideline, not a hard limit. When a change is bigger, split it along its natural seams.
+- **Stack dependent PRs.** Base each PR on the branch of the one it depends on, say so in the description, and merge from the bottom up. After each merge, delete the merged branch so GitHub retargets the next PR to `main`.
+- **Restructure a PR by editing it, not closing it.** Change its title, description, base branch or commits, so the review history stays in one place.
+
 ### PR Description Template
 
 ```markdown
