@@ -8,11 +8,6 @@ import 'package:favorite_places/screens/auth/guest_loading.dart';
 import 'package:favorite_places/screens/auth/login.dart';
 import 'package:favorite_places/screens/home_shell.dart';
 
-/// Root widget that watches the Firebase auth stream and:
-///   • starts the Firestore places listener when a user signs in
-///   • loads saved user settings so the chosen theme applies at launch
-///   • stops both and clears state when they sign out
-///   • routes to LoginScreen or HomeShell accordingly
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key, this.home = const HomeShell()});
 
@@ -22,16 +17,12 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
 
-    // userChanges also fires on profile updates (display name), so the places stream
-    // and settings only restart when the uid actually changes.
     ref.listen(authStateProvider, (previous, next) {
       final before = previous?.value?.uid;
       final after = next.value?.uid;
       if (before == after) return;
       if (after != null) {
         ref.read(userPlacesProvider.notifier).startListening();
-        // Fire-and-forget: the theme swaps in when it arrives. load() is
-        // guarded against overlapping calls.
         ref.read(userSettingsProvider.notifier).load();
       } else {
         ref.read(userPlacesProvider.notifier).stopListening();
@@ -64,8 +55,6 @@ class AuthGate extends ConsumerWidget {
         if (ref.watch(guestSeedingProvider)) return const GuestLoadingScreen();
         if (user == null) return const LoginScreen();
 
-        // Cold start: ref.listen above doesn't fire for the stream's initial
-        // value, so kick both off here too. Each is idempotent.
         ref.read(userPlacesProvider.notifier).startListening();
         ref.read(userSettingsProvider.notifier).load();
         return home;

@@ -40,7 +40,6 @@ class _EmailSignInSheetState extends ConsumerState<EmailSignInSheet> {
     if (state.hasError) {
       _show(firebaseAuthErrorMessage(state.error!), error: true);
     } else {
-      // Signed in: AuthGate swaps the screen underneath, so the sheet has to go.
       Navigator.of(context).pop();
     }
   }

@@ -4,13 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:favorite_places/config.dart';
 
-/// Populates a brand-new guest account with sample places.
 class DemoService {
-  /// Asks the backend to seed the signed-in account.
-  ///
-  /// The backend is idempotent — it refuses if the account already has places
-  /// — so calling this on every guest sign-in is safe. Failure is non-fatal:
-  /// the guest just lands on an empty list.
   static Future<bool> seed({
     http.Client? client,
     Future<String?> Function()? idToken,

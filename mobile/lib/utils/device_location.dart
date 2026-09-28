@@ -7,10 +7,7 @@ Future<LatLng?> currentLatLng() async {
   try {
     final location = Location();
 
-    // On web, requesting a position *is* the permission prompt. There is no
-    // separate grant step, and asking permission first reports "denied"
-    // while the browser is still only in the "prompt" state. Native does
-    // need the explicit request.
+    // On web, getLocation() is the permission prompt; asking first reports denied.
     if (!kIsWeb) {
       var status = await location.hasPermission();
       if (status == PermissionStatus.denied) {
@@ -26,15 +23,10 @@ Future<LatLng?> currentLatLng() async {
         );
     return LatLng(data.latitude, data.longitude);
   } catch (_) {
-    // Denied, unsupported, or timed out. The fallback map is already up and
-    // search and pan both work, so this is a degraded start, not a failure.
     return null;
   }
 }
 
-/// A stand-in for the platform "blue dot" on web. Rendered as two circles,
-/// a translucent accuracy halo and a solid core, so it reads as "you are
-/// here" rather than being mistaken for the red selection pin.
 Set<Circle> selfLocationCircles(LatLng? self) {
   if (!kIsWeb || self == null) return const {};
   const blue = Color(0xFF4285F4);

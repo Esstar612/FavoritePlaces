@@ -3,8 +3,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-// The web map ignores defaultMarkerWithHue, so the saved-place marker is drawn
-// as an image, which every platform renders the same way.
 Future<BitmapDescriptor> savedPlaceMarker({
   required Color fill,
   required Color ring,

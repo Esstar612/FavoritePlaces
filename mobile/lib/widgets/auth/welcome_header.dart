@@ -251,7 +251,6 @@ class _MapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // The artwork is drawn on the design's 412 x 404 grid and scaled to fit.
     canvas.scale(size.width / 412, size.height / 404);
     canvas.drawRect(const Rect.fromLTWH(0, 0, 412, 404), Paint()..color = _ground);
     final grid = Paint()

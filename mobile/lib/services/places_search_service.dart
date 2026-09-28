@@ -47,12 +47,6 @@ class PlaceDetailsResult {
   final PlacePhoto? photo;
 }
 
-/// Google Places (New) search, one autocomplete session per instance.
-///
-/// Billing: a session that ends in an Essentials details call bills its first
-/// 12 autocomplete requests, and the rest are free. Every field in
-/// [detailsFieldMask] is Essentials, so adding one from the Pro tier would
-/// change the price of every pick.
 class PlacesSearchService {
   PlacesSearchService({http.Client? client})
       : _client = client ?? http.Client(),
@@ -61,6 +55,7 @@ class PlacesSearchService {
   final http.Client _client;
   String _sessionToken;
 
+  // Every field here is Places Essentials; adding a Pro field reprices every pick.
   static const detailsFieldMask = 'location,formattedAddress,types,photos';
   static const minRadiusMeters = 1000.0;
   static const maxRadiusMeters = 50000.0;
@@ -119,7 +114,6 @@ class PlacesSearchService {
             matches: [
               for (final m in (main['matches'] as List?) ?? const [])
                 (
-                  // Google omits startOffset when a match starts at 0.
                   ((m as Map<String, dynamic>)['startOffset'] as num?)?.toInt() ?? 0,
                   (m['endOffset'] as num).toInt(),
                 ),
@@ -131,8 +125,6 @@ class PlacesSearchService {
         .toList();
   }
 
-  /// Resolve a suggestion to coordinates. Ends the billing session, so a new
-  /// token is issued for whatever the user searches next.
   Future<PlaceDetailsResult> details(String placeId) async {
     final uri = Uri.parse('https://places.googleapis.com/v1/places/$placeId')
         .replace(queryParameters: {'sessionToken': _sessionToken});
@@ -142,7 +134,6 @@ class PlacesSearchService {
       'X-Goog-FieldMask': detailsFieldMask,
     });
 
-    // Whatever the outcome, the session is spent.
     _sessionToken = const Uuid().v4();
 
     if (response.statusCode != 200) {
@@ -157,9 +148,6 @@ class PlacesSearchService {
   static const nearbyRadiusMeters = 25.0;
   static const nearbyCandidates = 5;
 
-  /// The closest Google place within [nearbyRadiusMeters] of a dropped pin, or
-  /// null when there's nothing there. Billed as Nearby Search Pro on every
-  /// call, so it runs once per pin, never per keystroke.
   Future<({String name, PlaceDetailsResult details})?> nearby(double latitude, double longitude) async {
     final response = await _client.post(
       Uri.parse('https://places.googleapis.com/v1/places:searchNearby'),
@@ -189,8 +177,6 @@ class PlacesSearchService {
             when name.isNotEmpty)
           (name: name, details: _detailsFrom(raw)),
     ];
-    // Offices and suite tenants share a building's pin but carry only generic
-    // types, so the nearest place with a real category is usually what was tapped.
     return places.where((p) => categoryForTypes(p.details.types) != PlaceCategory.other).firstOrNull ??
         places.firstOrNull;
   }

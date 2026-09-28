@@ -27,8 +27,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _loadSettings();
   }
 
-  /// Values normally arrive at sign-in; refresh on entry so the screen reflects
-  /// changes made on another device.
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
     final error = await ref.read(userSettingsProvider.notifier).load();
@@ -42,8 +40,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  /// Persist a change. The notifier applies it locally first, so the theme
-  /// switch takes effect immediately and rolls back if the write fails.
   Future<void> _update(UserSettings next) async {
     setState(() => _isSaving = true);
     final error = await ref.read(userSettingsProvider.notifier).save(next);
@@ -158,7 +154,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               max: 50,
               divisions: 49,
               semanticFormatterCallback: (value) => formatDistance(value * 1000, unit),
-              // Persist on release, not on every drag frame.
               onChanged: (value) => ref
                   .read(userSettingsProvider.notifier)
                   .setLocal(settings.copyWith(defaultRadius: value.round() * 1000)),
@@ -242,8 +237,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     final emailController = TextEditingController();
 
-    // The typed value is read after the dialog closes, so capture it before
-    // disposing rather than holding the controller past its usefulness.
     final bool? confirmed;
     final String typedEmail;
     try {
@@ -300,7 +293,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return;
       }
 
-      // Call backend to delete account
       final navigator = Navigator.of(context);
       try {
         final token = await user.getIdToken();
@@ -310,8 +302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
           },
-          // What the user typed, not user.email — sending the latter would
-          // make the backend's confirmation check trivially self-satisfying.
+          // What was typed, not user.email, or the backend's confirmation check always passes.
           body: jsonEncode({'confirmEmail': typedEmail}),
         );
 

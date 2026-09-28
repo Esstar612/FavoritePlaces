@@ -44,9 +44,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   SortOption _sortOption = SortOption.recent;
   bool _favoritesFirst = false;
 
-  // ── AI smart-search state ────────────────────────────────────────────────
-  // When non-null, the list is restricted to these ids instead of the plain
-  // substring match. Cleared whenever the query text changes.
   List<String>? _aiMatchIds;
   String? _aiExplanation;
   bool _aiSearching = false;
@@ -54,7 +51,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   @override
   void initState() {
     super.initState();
-    // loadPlaces restarts the Firestore stream, so only the Places tab calls it.
     _placesFuture = widget.favoritesOnly
         ? Future.value()
         : ref.read(userPlacesProvider.notifier).loadPlaces();
@@ -66,7 +62,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
     super.dispose();
   }
 
-  /// Pull-to-refresh. Surfaces failure rather than silently spinning back.
   Future<void> _refresh() async {
     try {
       await ref.read(userPlacesProvider.notifier).refresh();
@@ -157,9 +152,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
     setState(() { _aiMatchIds = null; _aiExplanation = null; });
   }
 
-  /// Ask the backend to interpret the query against this user's places.
-  /// Deliberately an explicit action — every call is a model request, so
-  /// running it per keystroke would be wasteful and slow.
   Future<void> _runAiSearch() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
@@ -197,10 +189,8 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   List<Place> _getFilteredAndSortedPlaces() {
     var places = ref.watch(userPlacesProvider);
     
-    // Create mutable copy
     var filtered = List<Place>.from(places);
     
-    // Filter by search — AI results take precedence over the substring match
     if (_aiMatchIds != null) {
       final ids = _aiMatchIds!.toSet();
       filtered = filtered.where((p) => ids.contains(p.id)).toList();
@@ -214,12 +204,10 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
       }).toList();
     }
     
-    // Filter by category
     if (_filterCategory != null) {
       filtered = filtered.where((p) => p.category == _filterCategory).toList();
     }
     
-    // Filter favorites only
     if (widget.favoritesOnly) {
       filtered = filtered.where((p) => p.isFavorite).toList();
     }
@@ -288,7 +276,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
         onRefresh: _refresh,
         child: Column(
           children: [
-            // Search Bar
             if (!widget.favoritesOnly)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -343,7 +330,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                   textInputAction: TextInputAction.search,
                   onSubmitted: (_) => _runAiSearch(),
                   onChanged: (value) {
-                    // A new query invalidates the previous AI result.
                     _clearAiSearch();
                     setState(() {
                       _searchQuery = value;
@@ -393,7 +379,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
               ),
             ],
 
-            // Places List
             Expanded(
               child: FutureBuilder(
                 future: _placesFuture,

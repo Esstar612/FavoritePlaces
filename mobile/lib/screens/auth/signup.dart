@@ -41,7 +41,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     super.dispose();
   }
 
-  // AuthGate swaps the screen underneath this pushed route, so it has to go.
   void _leave() => Navigator.of(context).popUntil((route) => route.isFirst);
 
   Future<void> _signUp() async {
@@ -89,7 +88,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     if (wasGuest) _dropSamples(messenger);
   }
 
-  // The account is already upgraded at this point; failing here only leaves the samples in the list.
   Future<void> _dropSamples(ScaffoldMessengerState messenger) async {
     try {
       final removed = await FirestoreService.deleteSamplePlaces();

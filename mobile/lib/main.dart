@@ -45,15 +45,12 @@ final lightColorScheme = ColorScheme.fromSeed(
   surfaceContainerHighest: const Color(0xFFE6E0E9),
 );
 
-/// Kept for backwards compatibility with existing references.
 final colorScheme = darkColorScheme;
 
 ThemeData _themeFor(ColorScheme scheme) {
   final base = ThemeData(
     useMaterial3: true,
     fontFamily: 'Roboto',
-    // Per-scheme, not shared — a dark surface on the light scheme would be
-    // unreadable.
     scaffoldBackgroundColor: scheme.surface,
     colorScheme: scheme,
     appBarTheme: const AppBarTheme(centerTitle: false),
@@ -66,7 +63,6 @@ ThemeData _themeFor(ColorScheme scheme) {
   return base.copyWith(textTheme: _untracked(base.textTheme));
 }
 
-// The designs set no letter spacing; Material 3's default tracking makes lines wrap sooner.
 TextTheme _untracked(TextTheme t) {
   TextStyle? zero(TextStyle? style) => style?.copyWith(letterSpacing: 0);
   return TextTheme(
@@ -89,16 +85,11 @@ TextTheme _untracked(TextTheme t) {
 }
 
 void main() async {
-  // Flutter + Firebase both need this before runApp
   WidgetsFlutterBinding.ensureInitialized();
-  // Web has no google-services.json / plist to read config from, so it must be
-  // passed explicitly; native platforms pick theirs up at build time.
   await Firebase.initializeApp(
     options: kIsWeb ? FirebaseWebOptions.current : null,
   );
 
-  // On web the Maps JavaScript API has to be present before any GoogleMap
-  // widget builds; native platforms ship the SDK and this is a no-op.
   if (kIsWeb) {
     await loadGoogleMapsJs(AppConfig.googleMapsApiKey);
   }
@@ -111,7 +102,6 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Hydrated from the backend at sign-in by AuthGate.
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
@@ -119,10 +109,7 @@ class MyApp extends ConsumerWidget {
       theme: _themeFor(lightColorScheme),
       darkTheme: _themeFor(darkColorScheme),
       themeMode: themeMode,
-      // Wraps the whole navigator, so dialogs and snackbars stay inside the
-      // frame too. No-op on mobile and in narrow windows.
       builder: (context, child) => WebPhoneFrame(child: child ?? const SizedBox.shrink()),
-      // AuthGate decides: login screens or main app
       home: const AuthGate(),
     );
   }

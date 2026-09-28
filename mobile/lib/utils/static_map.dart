@@ -1,10 +1,6 @@
 import 'package:favorite_places/config.dart';
 import 'package:favorite_places/models/place.dart';
 
-/// Google Static Maps image for a coordinate.
-///
-/// Used for the location previews, and as a place's card image when it has no
-/// photo — a map of where it is says more than a grey placeholder.
 String staticMapUrl({
   required double latitude,
   required double longitude,
@@ -20,7 +16,6 @@ String staticMapUrl({
     '&markers=color:red%7Clabel:A%7C$latitude,$longitude'
     '&key=${AppConfig.googleMapsApiKey}';
 
-/// Convenience for a [PlaceLocation].
 String staticMapUrlFor(
   PlaceLocation location, {
   int width = 600,
@@ -49,7 +44,6 @@ const _lightStyle = '&style=element:geometry%7Ccolor:0xf1ecf4'
     '&style=feature:road%7Celement:geometry%7Ccolor:0xffffff'
     '&style=feature:poi%7Cvisibility:off';
 
-/// Static map of an outing: numbered markers in stop order, joined by a line.
 String staticRouteMapUrl(List<PlaceLocation> stops, {int width = 640, int height = 280, bool light = false}) {
   final accent = light ? '6B4FA3' : 'D3BBFF';
   final points = [for (final stop in stops) '${stop.latitude},${stop.longitude}'];

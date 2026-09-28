@@ -102,8 +102,6 @@ class PlacesList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (places.isEmpty) {
-      // Scrollable even though it fits, so the parent RefreshIndicator still
-      // responds — an empty list is exactly when a refresh is wanted.
       return LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -148,7 +146,6 @@ class PlacesList extends ConsumerWidget {
     ];
     return ListView.separated(
       itemCount: rows.length,
-      // Allow the pull gesture even when the list is shorter than the screen.
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
       separatorBuilder: (context, index) =>

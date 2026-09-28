@@ -45,7 +45,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final muted = TextStyle(fontSize: 13, color: scheme.onSurfaceVariant);
 
     ref.listen<AsyncValue<void>>(authNotifierProvider, (previous, next) {
-      // The email sheet shows its own errors in place.
       if (_sheetOpen) return;
       next.whenOrNull(error: (error, _) {
         ScaffoldMessenger.of(context).showSnackBar(

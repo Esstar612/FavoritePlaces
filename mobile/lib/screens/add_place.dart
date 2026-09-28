@@ -103,7 +103,6 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
     }
     final places = ref.read(userPlacesProvider);
     if (places.isEmpty) return _fallbackCamera;
-    // The median lands among most of the saved places, even when one is in another city.
     double median(Iterable<double> values) => (values.toList()..sort())[values.length ~/ 2];
     final target = LatLng(
       median(places.map((p) => p.location.latitude)),
@@ -379,8 +378,6 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
               ],
             ),
           ),
-          // Below the map rather than over it: Google's logo and terms must stay
-          // visible, and the web map can't move them out from under an overlay.
           if (_picked case final picked? when !searching) _SheetPanel(
               picked: picked,
               expanded: _sheetExpanded,
@@ -462,7 +459,6 @@ class _SheetPanel extends StatelessWidget {
                 child: SingleChildScrollView(
                   padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.paddingOf(context).bottom),
                   child: PlaceSheet(
-                    // Editing keeps one sheet across pin moves, so nothing typed is lost.
                     key: editing == null ? ValueKey(picked) : ValueKey(editing!.id),
                     latitude: picked.position.latitude,
                     longitude: picked.position.longitude,
@@ -516,8 +512,6 @@ class _SearchPanel extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final unit = ref.watch(distanceUnitProvider);
     final primary = TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: scheme.primary);
-    // One tap region for the whole panel, so pressing a suggestion doesn't count
-    // as a tap outside the field, which would close the panel before the tap lands.
     return TextFieldTapRegion(
       child: Material(
         color: scheme.surfaceContainerHigh,

@@ -6,22 +6,15 @@ import 'package:uuid/uuid.dart';
 
 const _uuid = Uuid();
 
-/// Low-level Firestore + Storage operations.
-/// All methods are scoped to the currently-signed-in user.
 class FirestoreService {
-  // ── helpers ──────────────────────────────────────────────────────────────
   static String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
-  /// Root 'places' collection (documents are keyed by place ID).
   static CollectionReference<Map<String, dynamic>> get _places =>
       FirebaseFirestore.instance.collection('places');
 
-  // ── UPLOAD ───────────────────────────────────────────────────────────────
-  /// Upload a single image → return its download URL.
   static Future<String> uploadPhoto(XFile image) async {
     final ref = FirebaseStorage.instance
         .ref('users/$_uid/photos/${_uuid.v4()}.jpg');
-    // putFile has no web implementation; bytes upload the same way everywhere.
     await ref.putData(
       await image.readAsBytes(),
       SettableMetadata(contentType: image.mimeType ?? 'image/jpeg'),
@@ -29,7 +22,6 @@ class FirestoreService {
     return await ref.getDownloadURL();
   }
 
-  /// Upload every image in the list → return all URLs.
   static Future<List<String>> uploadPhotos(List<XFile> images) async {
     final urls = <String>[];
     for (final img in images) {
@@ -38,8 +30,6 @@ class FirestoreService {
     return urls;
   }
 
-  // ── CREATE ───────────────────────────────────────────────────────────────
-  /// Write a brand-new place document.  `photoUrls` must already be uploaded.
   static Future<void> addPlace({
     required String id,
     required String title,
@@ -72,7 +62,6 @@ class FirestoreService {
     });
   }
 
-  // ── STREAM (real-time list for current user) ────────────────────────────
   static Stream<List<Map<String, dynamic>>> streamPlaces() {
     return _places
         .where('userId', isEqualTo: _uid)
@@ -85,7 +74,6 @@ class FirestoreService {
             }).toList());
   }
 
-  // ── UPDATE ───────────────────────────────────────────────────────────────
   static Future<void> updatePlace({
     required String id,
     required String title,
@@ -115,34 +103,23 @@ class FirestoreService {
     });
   }
 
-  // ── SAVE AI SUMMARY (single-field update, cheap) ────────────────────────
   static Future<void> saveSummary(String id, Map<String, dynamic> summary) async {
     await _places.doc(id).update({'summary': summary});
   }
 
-  // ── TOGGLE FAVORITE (single-field update, cheap) ────────────────────────
   static Future<void> toggleFavorite(String id, bool value) async {
     await _places.doc(id).update({'isFavorite': value});
   }
 
-  // ── PHOTO CLEANUP ─────────────────────────────────────────────────────────
-  /// Best-effort removal of Storage objects by download URL.
-  ///
-  /// Used both when deleting a place and when replacing its photos — without
-  /// the latter, every edit leaves the previous image orphaned in Storage,
-  /// billable and unreachable.
   static Future<void> deletePhotos(Iterable<String> urls) async {
     for (final url in urls) {
       try {
         await FirebaseStorage.instance.refFromURL(url).delete();
       } catch (_) {
-        // Already gone, or not a Storage URL — nothing to do.
       }
     }
   }
 
-  // ── DELETE ────────────────────────────────────────────────────────────────
-  /// Delete the document AND its photos from Storage.
   static Future<void> deletePlace(String id) async {
     try {
       final doc = await _places.doc(id).get();
@@ -154,7 +131,6 @@ class FirestoreService {
     await _places.doc(id).delete();
   }
 
-  // ── EXPORT (one-shot fetch of all user data) ────────────────────────────
   static Future<int> deleteSamplePlaces({FirebaseFirestore? db, String? uid}) async {
     final store = db ?? FirebaseFirestore.instance;
     final snap = await store

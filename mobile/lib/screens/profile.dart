@@ -65,8 +65,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return confirmed == true;
   }
 
-  // AuthGate swaps the root screen on sign-out, but this pushed route would
-  // otherwise stay on top showing a signed-out profile.
   Future<void> _leaveAccount() async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);

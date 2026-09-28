@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 
 import 'package:favorite_places/config.dart';
 
-/// Result of POST /ai/smart-search
 class SmartSearchResult {
   const SmartSearchResult({required this.matchingIds, required this.explanation});
 
@@ -20,7 +19,6 @@ class SmartSearchResult {
       );
 }
 
-/// Result of POST /ai/summarize-notes
 class NoteSummary {
   const NoteSummary({
     required this.whyILikedIt,
@@ -42,7 +40,6 @@ class NoteSummary {
 class AIService {
   AIService();
 
-  // ─── shared: attach Firebase ID token as Bearer header ────────────────────
   Future<Map<String, String>> _authHeaders() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Not authenticated');
@@ -53,8 +50,6 @@ class AIService {
     };
   }
 
-  // ─── POST /ai/summarize-notes ─────────────────────────────────────────────
-  /// Sends the raw notes text; backend returns structured summary.
   Future<NoteSummary> summarizeNotes({
     required String title,
     required String notes,
@@ -82,12 +77,6 @@ class AIService {
     return NoteSummary.fromJson(jsonDecode(response.body));
   }
 
-  // ─── POST /ai/suggest-tags ────────────────────────────────────────────────
-  /// Returns suggested tags for a place.
-  ///
-  /// [photoUrl] is optional — a place being created hasn't uploaded its photo
-  /// yet, and the backend falls back to title + category in that case. When a
-  /// URL is supplied the backend also runs Cloud Vision over the image.
   Future<List<String>> suggestTags({
     String? photoUrl,
     required String title,
@@ -117,13 +106,6 @@ class AIService {
         .toList();
   }
 
-  // ─── POST /ai/smart-search ────────────────────────────────────────────────
-  /// Natural-language search over the user's own places, e.g.
-  /// "somewhere quiet to work" or "where did I get good coffee".
-  ///
-  /// The whole place list is sent so the model can reason over it; the backend
-  /// caps how many it will consider. Call this on an explicit action, never
-  /// per keystroke — each call is a model request.
   Future<SmartSearchResult> smartSearch({
     required String query,
     required List<Map<String, dynamic>> places,
@@ -146,13 +128,6 @@ class AIService {
     );
   }
 
-  // ─── GET /maps/reverse-geocode ────────────────────────────────────────────
-  /// Turn coordinates into a human-readable address.
-  ///
-  /// Runs server-side because the Geocoding web service rejects HTTP-referrer
-  /// restricted keys, so the web build cannot call it directly without
-  /// shipping a second, unrestricted key. Returns null when no address is
-  /// available — callers fall back to showing the coordinates.
   Future<String?> reverseGeocode({
     required double latitude,
     required double longitude,

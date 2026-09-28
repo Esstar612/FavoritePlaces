@@ -44,7 +44,6 @@ class _PlanComposeState extends ConsumerState<PlanCompose> {
     final places = ref.watch(userPlacesProvider);
     final start = startId == null ? null : places.where((p) => p.id == startId).firstOrNull;
 
-    // Sizes from real layout, not intrinsics, which underestimate wrapped text here.
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -339,7 +338,6 @@ class _InputCard extends StatelessWidget {
           Row(
             children: [
               Expanded(child: Text(helper, style: theme.textTheme.bodySmall)),
-              // Only the button listens to the text, so typing never rebuilds the field itself.
               ListenableBuilder(
                 listenable: controller,
                 builder: (context, _) => FilledButton.icon(
