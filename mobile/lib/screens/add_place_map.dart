@@ -56,6 +56,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
   bool _searching = false;
   bool _pinHint = false;
   int _lookup = 0;
+  bool _sheetExpanded = false;
   BitmapDescriptor? _savedIcon;
 
   @override
@@ -145,7 +146,10 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
       if (!mounted) return;
       final position = LatLng(details.latitude, details.longitude);
       _lookup++;
-      setState(() => _picked = PickedPlace(position: position, name: suggestion.primaryText, details: details));
+      setState(() {
+        _sheetExpanded = false;
+        _picked = PickedPlace(position: position, name: suggestion.primaryText, details: details);
+      });
       _moveTo(position);
     } catch (_) {
       if (mounted) _snack("Couldn't open that place.");
@@ -156,6 +160,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
     _queryFocus.unfocus();
     final lookup = ++_lookup;
     setState(() {
+      _sheetExpanded = false;
       _picked = PickedPlace(position: position, lookingUp: true);
       _pinHint = false;
       _suggestions = const [];
@@ -298,7 +303,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
                 ),
                 if (!searching && saved.isNotEmpty && _picked == null)
                   Positioned(left: 16, bottom: 40, child: _Legend(color: scheme.primary)),
-                if (!searching)
+                if (!searching && !_sheetExpanded)
                   Positioned(
                     right: 16,
                     bottom: _picked == null ? 32 : 16,
@@ -325,7 +330,12 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
           ),
           // Below the map rather than over it: Google's logo and terms must stay
           // visible, and the web map can't move them out from under an overlay.
-          if (_picked case final picked? when !searching) _SheetPanel(picked: picked, onNameItYourself: _nameItYourself),
+          if (_picked case final picked? when !searching) _SheetPanel(
+              picked: picked,
+              expanded: _sheetExpanded,
+              onExpanded: (value) => setState(() => _sheetExpanded = value),
+              onNameItYourself: _nameItYourself,
+            ),
         ],
       ),
     );
@@ -333,43 +343,77 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
 }
 
 class _SheetPanel extends StatelessWidget {
-  const _SheetPanel({required this.picked, required this.onNameItYourself});
+  const _SheetPanel({
+    required this.picked,
+    required this.expanded,
+    required this.onExpanded,
+    required this.onNameItYourself,
+  });
 
   final PickedPlace picked;
+  final bool expanded;
+  final ValueChanged<bool> onExpanded;
   final VoidCallback onNameItYourself;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final height = MediaQuery.sizeOf(context).height;
     return Material(
       color: scheme.surfaceContainer,
       elevation: 8,
       shadowColor: Colors.black,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.paddingOf(context).bottom),
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 200),
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: expanded
+              ? BoxConstraints.tightFor(height: height * 0.85)
+              : BoxConstraints(maxHeight: height * 0.6),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(color: scheme.outline, borderRadius: BorderRadius.circular(2)),
+              Semantics(
+                button: true,
+                label: expanded ? 'Collapse' : 'Expand to add details',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onExpanded(!expanded),
+                  onVerticalDragEnd: (details) {
+                    final velocity = details.primaryVelocity ?? 0;
+                    if (velocity < -100) onExpanded(true);
+                    if (velocity > 100) onExpanded(false);
+                  },
+                  child: SizedBox(
+                    height: 28,
+                    child: Center(
+                      child: Container(
+                        width: 32,
+                        height: 4,
+                        decoration: BoxDecoration(color: scheme.outline, borderRadius: BorderRadius.circular(2)),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              PlaceSheet(
-                key: ValueKey(picked),
-                latitude: picked.position.latitude,
-                longitude: picked.position.longitude,
-                name: picked.name,
-                details: picked.details,
-                lookingUp: picked.lookingUp,
-                declined: picked.declined,
-                onNameItYourself: picked.pinPosition == null ? null : onNameItYourself,
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.paddingOf(context).bottom),
+                  child: PlaceSheet(
+                    key: ValueKey(picked),
+                    latitude: picked.position.latitude,
+                    longitude: picked.position.longitude,
+                    name: picked.name,
+                    details: picked.details,
+                    lookingUp: picked.lookingUp,
+                    declined: picked.declined,
+                    onNameItYourself: picked.pinPosition == null ? null : onNameItYourself,
+                    expanded: expanded,
+                    onExpand: () => onExpanded(true),
+                  ),
+                ),
               ),
             ],
           ),

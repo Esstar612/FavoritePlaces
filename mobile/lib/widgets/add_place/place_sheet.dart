@@ -8,6 +8,7 @@ import 'package:favorite_places/services/ai_service.dart';
 import 'package:favorite_places/services/places_search_service.dart';
 import 'package:favorite_places/utils/geo.dart';
 import 'package:favorite_places/utils/place_types.dart';
+import 'package:favorite_places/widgets/add_place/place_details_form.dart';
 import 'package:favorite_places/widgets/place_visuals.dart';
 
 class PlaceSheet extends ConsumerStatefulWidget {
@@ -20,6 +21,8 @@ class PlaceSheet extends ConsumerStatefulWidget {
     this.lookingUp = false,
     this.declined = false,
     this.onNameItYourself,
+    this.expanded = false,
+    this.onExpand,
   });
 
   final double latitude;
@@ -29,6 +32,8 @@ class PlaceSheet extends ConsumerStatefulWidget {
   final bool lookingUp;
   final bool declined;
   final VoidCallback? onNameItYourself;
+  final bool expanded;
+  final VoidCallback? onExpand;
 
   bool get isDroppedPin => details == null;
 
@@ -38,6 +43,7 @@ class PlaceSheet extends ConsumerStatefulWidget {
 
 class _PlaceSheetState extends ConsumerState<PlaceSheet> {
   final _name = TextEditingController();
+  final _draft = PlaceDraft();
   late PlaceCategory _category = categoryForTypes(widget.details?.types ?? const []);
   String? _address;
   bool _locating = false;
@@ -54,6 +60,7 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
   @override
   void dispose() {
     _name.dispose();
+    _draft.dispose();
     super.dispose();
   }
 
@@ -82,6 +89,11 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
             Place(
               title: _title,
               category: _category,
+              images: [if (_draft.photo case final photo?) photo],
+              rating: _draft.rating,
+              visitDate: _draft.visited,
+              tags: List.of(_draft.tags),
+              notes: _draft.notes.text.trim(),
               location: PlaceLocation(
                 latitude: widget.latitude,
                 longitude: widget.longitude,
@@ -201,6 +213,10 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
           const SizedBox(height: 14),
           _SavedHereNote(title: saved.title),
         ],
+        if (widget.expanded && !widget.lookingUp) ...[
+          const SizedBox(height: 20),
+          PlaceDetailsForm(draft: _draft, title: _title, category: _category.name),
+        ],
         const SizedBox(height: 14),
         FilledButton.icon(
           style: FilledButton.styleFrom(
@@ -213,6 +229,17 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
               : const Icon(Icons.check, size: 20),
           label: Text(widget.isDroppedPin && _title.isEmpty ? 'Add a name to save' : 'Save this place'),
         ),
+        if (!widget.lookingUp) ...[
+          const SizedBox(height: 6),
+          if (widget.expanded)
+            Text('Photo, rating and tags are optional', textAlign: TextAlign.center, style: muted.copyWith(fontSize: 12))
+          else
+            TextButton.icon(
+              onPressed: widget.onExpand,
+              icon: const Icon(Icons.keyboard_arrow_up, size: 18),
+              label: const Text('Swipe up to add a photo, rating, tags or notes'),
+            ),
+        ],
       ],
     );
   }
