@@ -34,7 +34,7 @@ class _LocalPhotoState extends State<LocalPhoto> {
             fit: widget.fit,
             width: double.infinity,
             height: double.infinity,
-            errorBuilder: (_, __, ___) => placeholder,
+            errorBuilder: (_, _, _) => placeholder,
           ),
         null => placeholder,
       },

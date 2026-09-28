@@ -337,7 +337,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                               staticMapUrlFor(current.location),
                               height: 170,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => SizedBox(
+                              errorBuilder: (_, _, _) => SizedBox(
                                 height: 170,
                                 child: Icon(Icons.map_outlined, size: 48, color: scheme.onSurfaceVariant),
                               ),
@@ -488,7 +488,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   Widget _heroImage(Place p) {
     final tile = CategoryTile(category: p.category, iconSize: 96);
     if (p.photoUrls.isNotEmpty) {
-      return Image.network(p.photoUrls.first, fit: BoxFit.cover, errorBuilder: (_, __, ___) => tile);
+      return Image.network(p.photoUrls.first, fit: BoxFit.cover, errorBuilder: (_, _, _) => tile);
     }
     if (p.images.isNotEmpty) {
       return LocalPhoto(file: p.images.first, placeholder: tile);
@@ -496,8 +496,8 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     return Image.network(
       staticMapUrlFor(p.location, width: 640, height: 640, zoom: 15),
       fit: BoxFit.cover,
-      frameBuilder: (_, child, frame, __) => frame == null ? tile : child,
-      errorBuilder: (_, __, ___) => tile,
+      frameBuilder: (_, child, frame, _) => frame == null ? tile : child,
+      errorBuilder: (_, _, _) => tile,
     );
   }
 

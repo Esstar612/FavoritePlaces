@@ -24,9 +24,7 @@ Future<LatLng?> currentLatLng() async {
     final data = await location.getLocation().timeout(
           const Duration(seconds: 20),
         );
-    final lat = data.latitude, lng = data.longitude;
-    if (lat == null || lng == null) return null;
-    return LatLng(lat, lng);
+    return LatLng(data.latitude, data.longitude);
   } catch (_) {
     // Denied, unsupported, or timed out. The fallback map is already up and
     // search and pan both work, so this is a degraded start, not a failure.

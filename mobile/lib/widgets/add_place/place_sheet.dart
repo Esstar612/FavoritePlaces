@@ -112,7 +112,7 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
             title: _title,
             category: _category,
             location: _location,
-            images: [if (_draft.photo case final photo?) photo],
+            images: [?_draft.photo],
             photoUrls: _draft.savedPhotoUrls,
             rating: _draft.rating,
             visitDate: _draft.visited,
@@ -127,7 +127,7 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
             Place(
               title: _title,
               category: _category,
-              images: [if (_draft.photo case final photo?) photo],
+              images: [?_draft.photo],
               rating: _draft.rating,
               visitDate: _draft.visited,
               tags: List.of(_draft.tags),
@@ -317,8 +317,8 @@ class _PreviewPhoto extends StatelessWidget {
             : Image.network(
                 photoMediaUrl(photo.name, maxWidthPx: 288),
                 fit: BoxFit.cover,
-                frameBuilder: (_, child, frame, __) => frame == null ? tile : child,
-                errorBuilder: (_, __, ___) => tile,
+                frameBuilder: (_, child, frame, _) => frame == null ? tile : child,
+                errorBuilder: (_, _, _) => tile,
               ),
       ),
     );
