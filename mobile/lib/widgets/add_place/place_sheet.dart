@@ -23,6 +23,8 @@ class PlaceSheet extends ConsumerStatefulWidget {
     this.onNameItYourself,
     this.expanded = false,
     this.onExpand,
+    this.editing,
+    this.onMovePin,
   });
 
   final double latitude;
@@ -34,8 +36,10 @@ class PlaceSheet extends ConsumerStatefulWidget {
   final VoidCallback? onNameItYourself;
   final bool expanded;
   final VoidCallback? onExpand;
+  final Place? editing;
+  final VoidCallback? onMovePin;
 
-  bool get isDroppedPin => details == null;
+  bool get isDroppedPin => details == null && editing == null;
 
   @override
   ConsumerState<PlaceSheet> createState() => _PlaceSheetState();
@@ -43,8 +47,8 @@ class PlaceSheet extends ConsumerStatefulWidget {
 
 class _PlaceSheetState extends ConsumerState<PlaceSheet> {
   final _name = TextEditingController();
-  final _draft = PlaceDraft();
-  late PlaceCategory _category = categoryForTypes(widget.details?.types ?? const []);
+  late final _draft = widget.editing == null ? PlaceDraft() : PlaceDraft.from(widget.editing!);
+  late PlaceCategory _category = widget.editing?.category ?? categoryForTypes(widget.details?.types ?? const []);
   String? _address;
   bool _locating = false;
   bool _saving = false;
@@ -52,9 +56,17 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
   @override
   void initState() {
     super.initState();
-    _address = widget.details?.address;
+    _address = widget.editing?.location.address ?? widget.details?.address;
+    _name.text = widget.editing?.title ?? '';
     _name.addListener(() => setState(() {}));
     if (widget.isDroppedPin && !widget.lookingUp) _lookUpAddress();
+  }
+
+  @override
+  void didUpdateWidget(PlaceSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final moved = oldWidget.latitude != widget.latitude || oldWidget.longitude != widget.longitude;
+    if (widget.editing != null && moved) _lookUpAddress();
   }
 
   @override
@@ -80,12 +92,36 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
     });
   }
 
-  String get _title => widget.isDroppedPin ? _name.text.trim() : widget.name ?? '';
+  String get _title => widget.details == null ? _name.text.trim() : widget.name ?? '';
+
+  PlaceLocation get _location => PlaceLocation(
+        latitude: widget.latitude,
+        longitude: widget.longitude,
+        address: _address ?? _fallbackAddress,
+      );
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    final places = ref.read(userPlacesProvider.notifier);
     try {
-      await ref.read(userPlacesProvider.notifier).addPlace(
+      if (widget.editing case final place?) {
+        await places.updatePlace(
+          place.copyWith(
+            title: _title,
+            category: _category,
+            location: _location,
+            images: [if (_draft.photo case final photo?) photo],
+            photoUrls: _draft.savedPhotoUrls,
+            rating: _draft.rating,
+            visitDate: _draft.visited,
+            tags: List.of(_draft.tags),
+            notes: _draft.notes.text.trim(),
+          ),
+        );
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
+      await places.addPlace(
             Place(
               title: _title,
               category: _category,
@@ -94,11 +130,7 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
               visitDate: _draft.visited,
               tags: List.of(_draft.tags),
               notes: _draft.notes.text.trim(),
-              location: PlaceLocation(
-                latitude: widget.latitude,
-                longitude: widget.longitude,
-                address: _address ?? _fallbackAddress,
-              ),
+              location: _location,
             ),
           );
       if (mounted) Navigator.of(context).pop();
@@ -114,7 +146,9 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final saved = savedPlaceNear(ref.watch(userPlacesProvider), widget.latitude, widget.longitude);
+    final others = ref.watch(userPlacesProvider).where((p) => p.id != widget.editing?.id);
+    final saved = savedPlaceNear(others, widget.latitude, widget.longitude);
+    final editing = widget.editing != null;
     final canSave = _title.isNotEmpty && !_saving && !_locating && !widget.lookingUp;
     final muted = TextStyle(fontSize: 14, height: 20 / 14, color: scheme.onSurfaceVariant);
 
@@ -122,6 +156,29 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (editing) ...[
+          const Text('Edit place', style: TextStyle(fontSize: 22, height: 28 / 22, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _name,
+            textCapitalization: TextCapitalization.sentences,
+            maxLength: 80,
+            decoration: const InputDecoration(labelText: 'Name', counterText: '', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.place_outlined, size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(child: Text(_locating ? 'Finding the address…' : _address ?? '', style: muted)),
+              TextButton.icon(
+                onPressed: widget.onMovePin,
+                icon: const Icon(Icons.open_with, size: 18),
+                label: const Text('Move pin'),
+              ),
+            ],
+          ),
+        ] else
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -190,24 +247,11 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final category in PlaceCategory.values)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text('${category.icon} ${category.displayName}'),
-                      selected: _category == category,
-                      showCheckmark: false,
-                      onSelected: (_) => setState(() => _category = category),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+          _CategoryChips(value: _category, onChanged: (c) => setState(() => _category = c)),
+        ],
+        if (editing) ...[
+          const SizedBox(height: 8),
+          _CategoryChips(value: _category, onChanged: (c) => setState(() => _category = c)),
         ],
         if (saved != null) ...[
           const SizedBox(height: 14),
@@ -227,9 +271,15 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
           icon: _saving
               ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.check, size: 20),
-          label: Text(widget.isDroppedPin && _title.isEmpty ? 'Add a name to save' : 'Save this place'),
+          label: Text(
+            editing
+                ? 'Save changes'
+                : widget.isDroppedPin && _title.isEmpty
+                    ? 'Add a name to save'
+                    : 'Save this place',
+          ),
         ),
-        if (!widget.lookingUp) ...[
+        if (!widget.lookingUp && !editing) ...[
           const SizedBox(height: 6),
           if (widget.expanded)
             Text('Photo, rating and tags are optional', textAlign: TextAlign.center, style: muted.copyWith(fontSize: 12))
@@ -359,6 +409,35 @@ class _SavedHereNote extends StatelessWidget {
               style: const TextStyle(fontSize: 13, height: 18 / 13, color: foreground),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryChips extends StatelessWidget {
+  const _CategoryChips({required this.value, required this.onChanged});
+
+  final PlaceCategory value;
+  final ValueChanged<PlaceCategory> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final category in PlaceCategory.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text('${category.icon} ${category.displayName}'),
+                selected: value == category,
+                showCheckmark: false,
+                onSelected: (_) => onChanged(category),
+              ),
+            ),
         ],
       ),
     );

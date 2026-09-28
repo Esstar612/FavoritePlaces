@@ -1,6 +1,6 @@
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
-import 'package:favorite_places/screens/add_place.dart';
+import 'package:favorite_places/screens/add_place_map.dart';
 import 'package:favorite_places/screens/home_shell.dart';
 import 'package:favorite_places/screens/map.dart';
 import 'package:favorite_places/services/ai_service.dart';
@@ -109,7 +109,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   }
 
   void _edit(Place p) => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => AddPlaceScreen(placeToEdit: p)),
+        MaterialPageRoute(builder: (_) => AddPlaceMapScreen(placeToEdit: p)),
       );
 
   void _openMap(Place p) => Navigator.of(context).push(

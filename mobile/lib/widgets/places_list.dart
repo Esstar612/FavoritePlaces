@@ -1,6 +1,6 @@
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
-import 'package:favorite_places/screens/add_place.dart';
+import 'package:favorite_places/screens/add_place_map.dart';
 import 'package:favorite_places/screens/place_detail.dart';
 import 'package:favorite_places/utils/evidence.dart';
 import 'package:favorite_places/widgets/place_card.dart';
@@ -33,7 +33,7 @@ class PlacesList extends ConsumerWidget {
                 Navigator.pop(ctx);
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => AddPlaceScreen(placeToEdit: place),
+                    builder: (context) => AddPlaceMapScreen(placeToEdit: place),
                   ),
                 );
               },

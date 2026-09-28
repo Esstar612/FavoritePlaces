@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/services/ai_service.dart';
 import 'package:favorite_places/widgets/local_photo.dart';
 
@@ -10,11 +11,27 @@ const suggestedTags = [
 ];
 
 class PlaceDraft extends ChangeNotifier {
+  PlaceDraft();
+
+  PlaceDraft.from(Place place)
+      : rating = place.rating,
+        visited = place.visitDate,
+        savedPhotoUrls = List.of(place.photoUrls) {
+    tags.addAll(place.tags);
+    notes.text = place.notes;
+  }
+
   XFile? photo;
   int rating = 0;
   DateTime visited = DateTime.now();
+  List<String> savedPhotoUrls = const [];
   final List<String> tags = [];
   final notes = TextEditingController();
+
+  void removeSavedPhoto() {
+    savedPhotoUrls = const [];
+    notifyListeners();
+  }
 
   void setPhoto(XFile? value) {
     photo = value;
@@ -124,9 +141,21 @@ class _PlaceDetailsFormState extends State<PlaceDetailsForm> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Heading('Photo', trailing: _draft.photo == null ? null : 'Your photo'),
+            _Heading(
+              'Photo',
+              trailing: _draft.photo != null
+                  ? 'Your photo'
+                  : _draft.savedPhotoUrls.isNotEmpty
+                      ? 'Current photo'
+                      : null,
+            ),
             if (_draft.photo case final photo?)
-              _Preview(photo: photo, onRemove: () => _draft.setPhoto(null))
+              _Preview(image: LocalPhoto(file: photo), onRemove: () => _draft.setPhoto(null))
+            else if (_draft.savedPhotoUrls.firstOrNull case final url?)
+              _Preview(
+                image: Image.network(url, fit: BoxFit.cover, width: double.infinity),
+                onRemove: _draft.removeSavedPhoto,
+              )
             else
               Row(
                 children: [
@@ -294,9 +323,9 @@ class _PickTile extends StatelessWidget {
 }
 
 class _Preview extends StatelessWidget {
-  const _Preview({required this.photo, required this.onRemove});
+  const _Preview({required this.image, required this.onRemove});
 
-  final XFile photo;
+  final Widget image;
   final VoidCallback onRemove;
 
   @override
@@ -309,7 +338,7 @@ class _Preview extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            LocalPhoto(file: photo),
+            image,
             Positioned(
               right: 8,
               top: 8,

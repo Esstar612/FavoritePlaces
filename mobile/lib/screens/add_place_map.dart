@@ -36,7 +36,9 @@ class PickedPlace {
 }
 
 class AddPlaceMapScreen extends ConsumerStatefulWidget {
-  const AddPlaceMapScreen({super.key});
+  const AddPlaceMapScreen({super.key, this.placeToEdit});
+
+  final Place? placeToEdit;
 
   @override
   ConsumerState<AddPlaceMapScreen> createState() => _AddPlaceMapScreenState();
@@ -57,6 +59,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
   bool _pinHint = false;
   int _lookup = 0;
   bool _sheetExpanded = false;
+  bool _movingPin = false;
   BitmapDescriptor? _savedIcon;
 
   @override
@@ -73,6 +76,10 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.placeToEdit case final place?) {
+      _picked = PickedPlace(position: LatLng(place.location.latitude, place.location.longitude));
+      _sheetExpanded = true;
+    }
     _queryFocus.addListener(() => setState(() {}));
     currentLatLng().then((here) {
       if (!mounted || here == null) return;
@@ -90,6 +97,9 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
   }
 
   CameraPosition _initialCamera() {
+    if (widget.placeToEdit case final place?) {
+      return CameraPosition(target: LatLng(place.location.latitude, place.location.longitude), zoom: _placeZoom);
+    }
     final places = ref.read(userPlacesProvider);
     if (places.isEmpty) return _fallbackCamera;
     // The median lands among most of the saved places, even when one is in another city.
@@ -182,6 +192,15 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
     });
   }
 
+  void _movePinTo(LatLng position) {
+    if (!_movingPin) return;
+    setState(() {
+      _picked = PickedPlace(position: position);
+      _movingPin = false;
+      _sheetExpanded = true;
+    });
+  }
+
   void _nameItYourself() {
     final pin = _picked?.pinPosition;
     if (pin == null) return;
@@ -216,7 +235,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
 
   Set<Marker> _markers(List<Place> saved) => {
         if (_savedIcon case final icon?)
-          for (final place in saved)
+          for (final place in saved.where((p) => p.id != widget.placeToEdit?.id))
             Marker(
               markerId: MarkerId('saved-${place.id}'),
               position: LatLng(place.location.latitude, place.location.longitude),
@@ -248,7 +267,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
                   myLocationButtonEnabled: false,
                   zoomControlsEnabled: false,
                   mapToolbarEnabled: false,
-                  onTap: _dropPin,
+                  onTap: widget.placeToEdit == null ? _dropPin : _movePinTo,
                   onMapCreated: (controller) {
                     _controller = controller;
                     if (_pendingCamera case final update?) controller.animateCamera(update);
@@ -272,6 +291,24 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (widget.placeToEdit != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                          child: Row(
+                            children: [
+                              IconButton.filledTonal(
+                                tooltip: 'Cancel editing',
+                                icon: const Icon(Icons.close),
+                                onPressed: () => Navigator.of(context).maybePop(),
+                              ),
+                              if (_movingPin) ...[
+                                const SizedBox(width: 8),
+                                const Expanded(child: _Hint(text: 'Tap the map to move the pin')),
+                              ],
+                            ],
+                          ),
+                        )
+                      else
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                         child: _SearchPanel(
@@ -290,7 +327,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
                           },
                         ),
                       ),
-                      if (!searching && _picked == null) ...[
+                      if (!searching && _picked == null && widget.placeToEdit == null) ...[
                         const SizedBox(height: 12),
                         Center(
                           child: _Hint(
@@ -303,7 +340,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
                 ),
                 if (!searching && saved.isNotEmpty && _picked == null)
                   Positioned(left: 16, bottom: 40, child: _Legend(color: scheme.primary)),
-                if (!searching && !_sheetExpanded)
+                if (!searching && !_sheetExpanded && widget.placeToEdit == null)
                   Positioned(
                     right: 16,
                     bottom: _picked == null ? 32 : 16,
@@ -335,6 +372,11 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
               expanded: _sheetExpanded,
               onExpanded: (value) => setState(() => _sheetExpanded = value),
               onNameItYourself: _nameItYourself,
+              editing: widget.placeToEdit,
+              onMovePin: () => setState(() {
+                _movingPin = true;
+                _sheetExpanded = false;
+              }),
             ),
         ],
       ),
@@ -348,12 +390,16 @@ class _SheetPanel extends StatelessWidget {
     required this.expanded,
     required this.onExpanded,
     required this.onNameItYourself,
+    this.editing,
+    this.onMovePin,
   });
 
   final PickedPlace picked;
   final bool expanded;
   final ValueChanged<bool> onExpanded;
   final VoidCallback onNameItYourself;
+  final Place? editing;
+  final VoidCallback? onMovePin;
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +448,8 @@ class _SheetPanel extends StatelessWidget {
                 child: SingleChildScrollView(
                   padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.paddingOf(context).bottom),
                   child: PlaceSheet(
-                    key: ValueKey(picked),
+                    // Editing keeps one sheet across pin moves, so nothing typed is lost.
+                    key: editing == null ? ValueKey(picked) : ValueKey(editing!.id),
                     latitude: picked.position.latitude,
                     longitude: picked.position.longitude,
                     name: picked.name,
@@ -412,6 +459,8 @@ class _SheetPanel extends StatelessWidget {
                     onNameItYourself: picked.pinPosition == null ? null : onNameItYourself,
                     expanded: expanded,
                     onExpand: () => onExpanded(true),
+                    editing: editing,
+                    onMovePin: onMovePin,
                   ),
                 ),
               ),
