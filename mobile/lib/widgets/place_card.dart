@@ -192,7 +192,7 @@ class _Hero extends StatelessWidget {
           ? place.photoUrls.first
           : staticMapUrlFor(place.location, width: 600, height: 248, zoom: 15),
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) => progress == null ? child : tile,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => frame == null ? tile : child,
       errorBuilder: (context, error, stack) => tile,
     );
   }
