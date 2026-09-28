@@ -7,6 +7,7 @@ import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/route_map.dart';
 import 'package:favorite_places/services/agent_service.dart';
 import 'package:favorite_places/utils/static_map.dart';
+import 'package:favorite_places/widgets/place_visuals.dart';
 import 'package:favorite_places/widgets/plan/common.dart';
 import 'package:favorite_places/widgets/plan/trace.dart';
 
@@ -221,33 +222,12 @@ class _Thumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final (background, foreground) = _tileColors[place.category] ??
-        (scheme.secondaryContainer, scheme.onSecondaryContainer);
     return SizedBox(
       width: 78,
       height: 78,
       child: Stack(
         children: [
-          Positioned(
-            left: 6,
-            top: 6,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox.square(
-                dimension: 72,
-                child: place.photoUrls.isNotEmpty
-                    ? Image.network(place.photoUrls.first, fit: BoxFit.cover)
-                    : ColoredBox(
-                        color: background,
-                        child: Icon(
-                          categoryIcon(place.category),
-                          size: 32,
-                          color: foreground.withValues(alpha: 0.6),
-                        ),
-                      ),
-              ),
-            ),
-          ),
+          Positioned(left: 6, top: 6, child: PlaceThumb(place: place)),
           Container(
             width: 26,
             height: 26,
@@ -267,13 +247,6 @@ class _Thumb extends StatelessWidget {
     );
   }
 }
-
-const _tileColors = {
-  PlaceCategory.cafe: (Color(0xFF4A3040), Color(0xFFFFD9E3)),
-  PlaceCategory.museum: (Color(0xFF3F3470), Color(0xFFEBDDFF)),
-  PlaceCategory.park: (Color(0xFF2F4A38), Color(0xFFCDEBD3)),
-  PlaceCategory.restaurant: (Color(0xFF4A3A28), Color(0xFFFFDDB8)),
-};
 
 class _LegRow extends StatelessWidget {
   const _LegRow({required this.leg});
