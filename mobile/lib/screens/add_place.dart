@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
@@ -7,6 +6,7 @@ import 'package:favorite_places/widgets/image_input.dart';
 import 'package:favorite_places/widgets/location_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 class AddPlaceScreen extends ConsumerStatefulWidget {
   const AddPlaceScreen({super.key, this.placeToEdit});
@@ -23,7 +23,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
   final _tagController      = TextEditingController();
 
   // ── local state ──────────────────────────────────────────────────────────
-  List<File>      _newImages       = [];   // freshly-picked images (not yet uploaded)
+  List<XFile>     _newImages       = [];   // freshly-picked images (not yet uploaded)
   List<String>    _existingUrls    = [];   // cloud URLs from an existing place (edit mode)
   PlaceLocation?  _selectedLocation;
   PlaceCategory   _selectedCategory = PlaceCategory.other;

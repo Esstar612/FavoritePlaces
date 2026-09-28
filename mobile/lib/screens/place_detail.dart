@@ -5,6 +5,7 @@ import 'package:favorite_places/screens/home_shell.dart';
 import 'package:favorite_places/screens/map.dart';
 import 'package:favorite_places/services/ai_service.dart';
 import 'package:favorite_places/utils/static_map.dart';
+import 'package:favorite_places/widgets/local_photo.dart';
 import 'package:favorite_places/widgets/place_visuals.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -484,7 +485,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
       return Image.network(p.photoUrls.first, fit: BoxFit.cover, errorBuilder: (_, __, ___) => tile);
     }
     if (p.images.isNotEmpty) {
-      return Image.file(p.images.first, fit: BoxFit.cover, errorBuilder: (_, __, ___) => tile);
+      return LocalPhoto(file: p.images.first, placeholder: tile);
     }
     return Image.network(
       staticMapUrlFor(p.location, width: 640, height: 640, zoom: 15),

@@ -1,7 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
+import 'package:favorite_places/widgets/local_photo.dart';
 
 class ImageInput extends StatefulWidget {
   const ImageInput({
@@ -10,7 +10,7 @@ class ImageInput extends StatefulWidget {
     this.initialImageUrl,
   });
 
-  final void Function(File image) onPickImage;
+  final void Function(XFile image) onPickImage;
 
   /// Already-uploaded photo shown when editing, until the user picks a new one.
   final String? initialImageUrl;
@@ -22,7 +22,7 @@ class ImageInput extends StatefulWidget {
 }
 
 class _ImageInputState extends State<ImageInput> {
-  File? _selectedImage;
+  XFile? _selectedImage;
 
   void _pickImage(ImageSource source) async {
     final imagePicker = ImagePicker();
@@ -37,7 +37,7 @@ class _ImageInputState extends State<ImageInput> {
     }
 
     setState(() {
-      _selectedImage = File(pickedImage.path);
+      _selectedImage = pickedImage;
     });
 
     widget.onPickImage(_selectedImage!);
@@ -84,12 +84,7 @@ class _ImageInputState extends State<ImageInput> {
     if (_selectedImage != null) {
       content = GestureDetector(
         onTap: _showImageSourceDialog,
-        child: Image.file(
-          _selectedImage!,
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-        ),
+        child: LocalPhoto(file: _selectedImage!),
       );
     } else if (widget.initialImageUrl != null) {
       // Editing an existing place: show the stored photo, tap to replace it.

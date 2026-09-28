@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:favorite_places/models/place.dart';
 
@@ -119,6 +122,15 @@ void main() {
       expect(copy.rating, 4);
       expect(copy.notes, 'keep me');
       expect(copy.isFavorite, isTrue);
+    });
+
+    test('carries a picked photo until it is uploaded', () {
+      final photo = XFile.fromData(Uint8List.fromList([1, 2, 3]));
+      final copy = Place.fromFirestore(doc()).copyWith(images: [photo]);
+
+      expect(copy.images.single, same(photo));
+      expect(copy.hasPhoto, isTrue);
+      expect(copy.copyWith(title: 'Renamed').images.single, same(photo));
     });
   });
 

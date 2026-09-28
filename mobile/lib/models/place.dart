@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 const uuid = Uuid();
@@ -89,7 +89,7 @@ class Place {
   Place({
     required this.title,
     required this.location,
-    this.images    = const [],   // local File objects — only populated right after camera pick
+    this.images    = const [],   // picked photos, only populated until they are uploaded
     this.photoUrls = const [],   // Firebase Storage download URLs — persisted source of truth
     this.category  = PlaceCategory.other,
     this.tags      = const [],
@@ -106,7 +106,7 @@ class Place {
 
   final String id;
   final String title;
-  final List<File>   images;     // transient — cleared after upload
+  final List<XFile>  images;     // transient — cleared after upload
   final List<String> photoUrls;  // persisted
   final PlaceLocation location;
   final PlaceCategory category;
@@ -118,11 +118,10 @@ class Place {
   final DateTime visitDate;
   final DateTime createdAt;
 
-  File   get primaryImage => images.isNotEmpty ? images.first : File('');
   bool   get hasPhoto     => images.isNotEmpty || photoUrls.isNotEmpty;
 
   Place copyWith({
-    String? title, List<File>? images, List<String>? photoUrls,
+    String? title, List<XFile>? images, List<String>? photoUrls,
     PlaceLocation? location, PlaceCategory? category, List<String>? tags,
     String? notes, int? rating, bool? isFavorite, DateTime? visitDate,
     PlaceSummary? summary,
