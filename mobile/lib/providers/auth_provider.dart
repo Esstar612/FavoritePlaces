@@ -60,6 +60,20 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
   // ── Google Sign-In ───────────────────────────────────────────────────────
   Future<void> signInWithGoogle() async {
     state = const AsyncValue.loading();
+    if (kIsWeb) {
+      // Firebase's own popup, so the button can match the design; the web
+      // google_sign_in plugin only offers Google's rendered button.
+      try {
+        await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+        state = const AsyncValue.data(null);
+      } on FirebaseAuthException catch (e, st) {
+        const cancelled = {'popup-closed-by-user', 'cancelled-popup-request', 'user-cancelled'};
+        state = cancelled.contains(e.code) ? const AsyncValue.data(null) : AsyncValue.error(e, st);
+      } catch (e, st) {
+        state = AsyncValue.error(e, st);
+      }
+      return;
+    }
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
