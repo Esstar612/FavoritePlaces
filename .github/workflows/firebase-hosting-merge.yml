@@ -45,6 +45,7 @@ jobs:
                 kIsWeb ? _webMapsKey : _mobileMapsKey;
 
             static const String backendUrl = '$BACKEND_URL';
+            static const String agentUrl = 'https://favorite-places-agent-671529202846.us-central1.run.app';
 
             static const String appName = 'Favorite Places';
             static const String placesCollection = 'places';

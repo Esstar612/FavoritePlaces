@@ -13,7 +13,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum SortOption { recent, alphabetical, rating, category }
 
 class PlacesScreen extends ConsumerStatefulWidget {
-  const PlacesScreen({super.key});
+  const PlacesScreen({super.key, this.favoritesOnly = false});
+
+  final bool favoritesOnly;
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() {
@@ -27,7 +29,6 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   String _searchQuery = '';
   PlaceCategory? _filterCategory;
   SortOption _sortOption = SortOption.recent;
-  bool _showFavoritesOnly = false;
 
   // ── AI smart-search state ────────────────────────────────────────────────
   // When non-null, the list is restricted to these ids instead of the plain
@@ -39,7 +40,10 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   @override
   void initState() {
     super.initState();
-    _placesFuture = ref.read(userPlacesProvider.notifier).loadPlaces();
+    // loadPlaces restarts the Firestore stream, so only the Places tab calls it.
+    _placesFuture = widget.favoritesOnly
+        ? Future.value()
+        : ref.read(userPlacesProvider.notifier).loadPlaces();
   }
 
   @override
@@ -128,7 +132,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
     }
     
     // Filter favorites only
-    if (_showFavoritesOnly) {
+    if (widget.favoritesOnly) {
       filtered = filtered.where((p) => p.isFavorite).toList();
     }
     
@@ -159,17 +163,8 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Favorite Places'),
+        title: Text(widget.favoritesOnly ? 'Favorites' : 'Favorite Places'),
         actions: [
-          IconButton(
-            icon: Icon(_showFavoritesOnly ? Icons.favorite : Icons.favorite_border),
-            onPressed: () {
-              setState(() {
-                _showFavoritesOnly = !_showFavoritesOnly;
-              });
-            },
-            tooltip: 'Show Favorites Only',
-          ),
           PopupMenuButton<SortOption>(
             icon: const Icon(Icons.sort),
             onSelected: (option) {
@@ -364,17 +359,19 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (ctx) => const AddPlaceScreen(),
+      floatingActionButton: widget.favoritesOnly
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (ctx) => const AddPlaceScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Place'),
             ),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Place'),
-      ),
     );
   }
 }

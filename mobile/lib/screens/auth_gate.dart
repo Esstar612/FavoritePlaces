@@ -5,13 +5,13 @@ import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/providers/user_settings.dart';
 import 'package:favorite_places/screens/auth/login.dart';
-import 'package:favorite_places/screens/places.dart';
+import 'package:favorite_places/screens/home_shell.dart';
 
 /// Root widget that watches the Firebase auth stream and:
 ///   • starts the Firestore places listener when a user signs in
 ///   • loads saved user settings so the chosen theme applies at launch
 ///   • stops both and clears state when they sign out
-///   • routes to LoginScreen or PlacesScreen accordingly
+///   • routes to LoginScreen or HomeShell accordingly
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
 
@@ -62,7 +62,7 @@ class AuthGate extends ConsumerWidget {
         // value, so kick both off here too. Each is idempotent.
         ref.read(userPlacesProvider.notifier).startListening();
         ref.read(userSettingsProvider.notifier).load();
-        return const PlacesScreen();
+        return const HomeShell();
       },
     );
   }
