@@ -262,7 +262,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
               children: [
                 GoogleMap(
                   initialCameraPosition: _initialCamera(),
-                  style: darkMapStyle,
+                  style: mapStyleFor(Theme.of(context).brightness),
                   markers: _markers(saved),
                   circles: selfLocationCircles(_self),
                   myLocationButtonEnabled: false,

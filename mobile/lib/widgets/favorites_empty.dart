@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/home_tab.dart';
 import 'package:favorite_places/providers/user_places.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/widgets/place_visuals.dart';
 
 class FavoritesEmpty extends ConsumerWidget {
@@ -103,7 +104,7 @@ class _TopRow extends ConsumerWidget {
                       '${place.category.displayName} · ',
                       style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
                     ),
-                    const Icon(Icons.star, size: 12, color: Color(0xFFF9C74F)),
+                    Icon(Icons.star, size: 12, color: scheme.star),
                     const SizedBox(width: 2),
                     Text('${place.rating}', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
                   ],

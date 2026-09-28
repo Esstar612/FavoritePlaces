@@ -8,6 +8,7 @@ import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/auth/signup.dart';
 import 'package:favorite_places/screens/settings.dart';
 import 'package:favorite_places/services/firestore_service.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/utils/place_stats.dart';
 import 'package:favorite_places/utils/user_display.dart';
 import 'package:favorite_places/widgets/profile_stats.dart';
@@ -162,7 +163,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _Row(
                 icon: Icons.download_outlined,
                 title: 'Export my data',
-                subtitle: 'Download all ${stats.places} places as JSON',
+                subtitle: stats.places == 1
+                    ? 'Download your 1 place as JSON'
+                    : 'Download all ${stats.places} places as JSON',
                 trailing: _isExporting
                     ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : null,
@@ -219,29 +222,27 @@ class _GuestCard extends StatelessWidget {
   final VoidCallback onCreateAccount;
   final VoidCallback onSignIn;
 
-  static const _background = Color(0xFF3E2B33);
-  static const _text = Color(0xFFFFD9E3);
-  static const _accent = Color(0xFFF0B8C9);
-  static const _onAccent = Color(0xFF492532);
-
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final (background, text) = scheme.pinkNote;
+    final (accent, onAccent) = scheme.pinkAction;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _background, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.info_outline, color: _accent),
+              Icon(Icons.info_outline, color: accent),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'These $places San Francisco spots are samples, so you can try every feature. '
                   'Sign in to start your own list and keep it in sync.',
-                  style: const TextStyle(fontSize: 15, height: 22 / 15, color: _text),
+                  style: TextStyle(fontSize: 15, height: 22 / 15, color: text),
                 ),
               ),
             ],
@@ -251,13 +252,13 @@ class _GuestCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                style: TextButton.styleFrom(foregroundColor: _accent),
+                style: TextButton.styleFrom(foregroundColor: accent),
                 onPressed: onCreateAccount,
                 child: const Text('Create account'),
               ),
               const SizedBox(width: 8),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: _accent, foregroundColor: _onAccent),
+                style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: onAccent),
                 onPressed: onSignIn,
                 child: const Text('Sign in'),
               ),

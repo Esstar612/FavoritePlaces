@@ -10,8 +10,34 @@ const categoryTileColors = {
   PlaceCategory.restaurant: (Color(0xFF4A3A28), Color(0xFFFFDDB8)),
 };
 
+const lightCategoryTileColors = {
+  PlaceCategory.cafe: (Color(0xFFFFD8E4), Color(0xFF7D5260)),
+  PlaceCategory.museum: (Color(0xFFEBDDFF), Color(0xFF6B4FA3)),
+  PlaceCategory.park: (Color(0xFFD5ECD9), Color(0xFF2F6B43)),
+  PlaceCategory.restaurant: (Color(0xFFFFE2C4), Color(0xFF7A4A12)),
+};
+
+const _categoryColors = {
+  PlaceCategory.restaurant: (Color(0xFFB25E00), Color(0xFFFFB77C)),
+  PlaceCategory.cafe: (Color(0xFF9A4868), Color(0xFFFFB0CB)),
+  PlaceCategory.park: (Color(0xFF2E7D4F), Color(0xFF8FD5A6)),
+  PlaceCategory.museum: (Color(0xFF6B4FA3), Color(0xFFD3BBFF)),
+  PlaceCategory.shopping: (Color(0xFF1E6AA3), Color(0xFF9CCAFF)),
+  PlaceCategory.entertainment: (Color(0xFF00796B), Color(0xFF7ED8C8)),
+  PlaceCategory.hotel: (Color(0xFF7A5C3E), Color(0xFFE3C4A0)),
+  PlaceCategory.bar: (Color(0xFFA63D40), Color(0xFFFFB3AE)),
+  PlaceCategory.gym: (Color(0xFF6F7A00), Color(0xFFC8D35A)),
+  PlaceCategory.other: (Color(0xFF6F6977), Color(0xFFCAC4D0)),
+};
+
+Color categoryColor(PlaceCategory category, Brightness brightness) {
+  final (light, dark) = _categoryColors[category]!;
+  return brightness == Brightness.light ? light : dark;
+}
+
 (Color, Color) tileColorsFor(PlaceCategory category, ColorScheme scheme) =>
-    categoryTileColors[category] ?? (scheme.secondaryContainer, scheme.onSecondaryContainer);
+    (scheme.brightness == Brightness.light ? lightCategoryTileColors : categoryTileColors)[category] ??
+    (scheme.secondaryContainer, scheme.onSecondaryContainer);
 
 class CategoryTile extends StatelessWidget {
   const CategoryTile({super.key, required this.category, this.iconSize = 32});

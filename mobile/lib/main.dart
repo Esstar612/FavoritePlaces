@@ -24,6 +24,25 @@ final darkColorScheme = ColorScheme.fromSeed(
 final lightColorScheme = ColorScheme.fromSeed(
   brightness: Brightness.light,
   seedColor: _seedColor,
+  primary: const Color(0xFF6B4FA3),
+  onPrimary: const Color(0xFFFFFFFF),
+  primaryContainer: const Color(0xFFEBDDFF),
+  onPrimaryContainer: const Color(0xFF24104F),
+  secondaryContainer: const Color(0xFFE8DEF8),
+  onSecondaryContainer: const Color(0xFF1E192B),
+  tertiary: const Color(0xFF7D5260),
+  tertiaryContainer: const Color(0xFFFFD8E4),
+  error: const Color(0xFFBA1A1A),
+  surface: const Color(0xFFFEF7FF),
+  onSurface: const Color(0xFF1D1B20),
+  onSurfaceVariant: const Color(0xFF49454E),
+  outline: const Color(0xFF7A757F),
+  outlineVariant: const Color(0xFFCBC4CF),
+  surfaceContainerLowest: const Color(0xFFFFFFFF),
+  surfaceContainerLow: const Color(0xFFF7F2FA),
+  surfaceContainer: const Color(0xFFF3EDF7),
+  surfaceContainerHigh: const Color(0xFFEEE7F2),
+  surfaceContainerHighest: const Color(0xFFE6E0E9),
 );
 
 /// Kept for backwards compatibility with existing references.
@@ -32,6 +51,9 @@ final colorScheme = darkColorScheme;
 ThemeData _themeFor(ColorScheme scheme) {
   final base = ThemeData(
     useMaterial3: true,
+    // Bundled because Flutter web otherwise falls back to a single regular-weight Roboto,
+    // so the designs' medium (500) text renders regular.
+    fontFamily: 'Roboto',
     // Per-scheme, not shared — a dark surface on the light scheme would be
     // unreadable.
     scaffoldBackgroundColor: scheme.surface,

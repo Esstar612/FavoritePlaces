@@ -1,20 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:favorite_places/models/place.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/utils/place_stats.dart';
-
-const _mixColors = [
-  Color(0xFFF0B8C9),
-  Color(0xFFD3BBFF),
-  Color(0xFF9AD1A8),
-  Color(0xFFF9C74F),
-  Color(0xFF9ECAFF),
-  Color(0xFFFFB68C),
-  Color(0xFF80D5D0),
-  Color(0xFFE6C3A0),
-  Color(0xFFC5B8FF),
-  Color(0xFFB7B0BF),
-];
+import 'package:favorite_places/widgets/place_visuals.dart';
 
 class ProfileStatsCard extends StatelessWidget {
   const ProfileStatsCard({super.key, required this.stats});
@@ -72,7 +61,7 @@ class ProfileStatsCard extends StatelessWidget {
                 average == null ? '–' : average.toStringAsFixed(1),
                 'Avg rating',
                 icon: Icons.star,
-                iconColor: const Color(0xFFF9C74F),
+                iconColor: scheme.star,
               ),
             ],
           ),
@@ -102,6 +91,7 @@ class _Mix extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final label = mix.map((e) => '${e.key.displayName} ${e.value}').join(', ');
     return Column(
@@ -126,7 +116,7 @@ class _Mix extends StatelessWidget {
                 children: [
                   for (final (i, entry) in mix.indexed) ...[
                     if (i > 0) const SizedBox(width: 3),
-                    Expanded(flex: entry.value, child: ColoredBox(color: _mixColors[i % _mixColors.length])),
+                    Expanded(flex: entry.value, child: ColoredBox(color: categoryColor(entry.key, brightness))),
                   ],
                 ],
               ),
@@ -139,14 +129,14 @@ class _Mix extends StatelessWidget {
             spacing: 14,
             runSpacing: 4,
             children: [
-              for (final (i, entry) in mix.indexed)
+              for (final entry in mix)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 10,
                       height: 10,
-                      decoration: BoxDecoration(color: _mixColors[i % _mixColors.length], shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: categoryColor(entry.key, brightness), shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 6),
                     Text('${entry.key.displayName} ${entry.value}', style: TextStyle(fontSize: 12, color: muted)),

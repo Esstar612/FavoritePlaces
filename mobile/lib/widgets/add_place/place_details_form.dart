@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/services/ai_service.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/widgets/local_photo.dart';
 
 const suggestedTags = [
@@ -178,7 +179,7 @@ class _PlaceDetailsFormState extends State<PlaceDetailsForm> {
                       icon: Icon(
                         star <= _draft.rating ? Icons.star : Icons.star_border,
                         size: 32,
-                        color: const Color(0xFFF9C74F),
+                        color: scheme.star,
                       ),
                     ),
                 ],

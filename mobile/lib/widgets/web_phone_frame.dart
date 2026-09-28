@@ -24,6 +24,9 @@ class WebPhoneFrame extends StatelessWidget {
   static const double _cornerRadius = 44;
   static const double _bezel = 10;
 
+  // A real phone's status bar keeps top-aligned controls clear of the rounded corners.
+  static const _statusBar = EdgeInsets.only(top: 24);
+
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
@@ -74,8 +77,8 @@ class WebPhoneFrame extends StatelessWidget {
                   child: MediaQuery(
                     data: media.copyWith(
                       size: const Size(_phoneWidth, _phoneHeight),
-                      viewPadding: EdgeInsets.zero,
-                      padding: EdgeInsets.zero,
+                      viewPadding: _statusBar,
+                      padding: _statusBar,
                       viewInsets: EdgeInsets.zero,
                     ),
                     child: child,

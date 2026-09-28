@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/utils/evidence.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/utils/static_map.dart';
 import 'package:favorite_places/widgets/place_visuals.dart';
 
@@ -25,75 +26,78 @@ class PlaceCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Material(
-      color: scheme.surfaceContainer,
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: 124,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _Hero(place: place),
-                  Positioned(left: 12, top: 12, child: _CategoryPill(category: place.category)),
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: IconButton(
-                      style: IconButton.styleFrom(
-                        backgroundColor: scheme.surface,
-                        fixedSize: const Size.square(44),
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), boxShadow: scheme.cardShadow),
+      child: Material(
+        color: scheme.card,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 124,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _Hero(place: place),
+                    Positioned(left: 12, top: 12, child: _CategoryPill(category: place.category)),
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: IconButton(
+                        style: IconButton.styleFrom(
+                          backgroundColor: scheme.surface,
+                          fixedSize: const Size.square(44),
+                        ),
+                        tooltip: place.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+                        color: place.isFavorite ? scheme.error : scheme.onSurface,
+                        icon: Icon(place.isFavorite ? Icons.favorite : Icons.favorite_border),
+                        onPressed: () => ref.read(userPlacesProvider.notifier).toggleFavorite(place.id),
                       ),
-                      tooltip: place.isFavorite ? 'Remove from favorites' : 'Add to favorites',
-                      color: place.isFavorite ? scheme.error : scheme.onSurface,
-                      icon: Icon(place.isFavorite ? Icons.favorite : Icons.favorite_border),
-                      onPressed: () => ref.read(userPlacesProvider.notifier).toggleFavorite(place.id),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          place.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            place.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                          ),
                         ),
-                      ),
-                      if (place.rating > 0) ...[
-                        const SizedBox(width: 8),
-                        const Icon(Icons.star, size: 20, color: Color(0xFFF9C74F)),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${place.rating}',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                        ),
+                        if (place.rating > 0) ...[
+                          const SizedBox(width: 8),
+                          Icon(Icons.star, size: 20, color: scheme.star),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${place.rating}',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  if (evidence case final evidence?) ...[
-                    const SizedBox(height: 8),
-                    _EvidenceLine(evidence: evidence),
-                  ] else
-                    ..._details(scheme),
-                ],
+                    ),
+                    if (evidence case final evidence?) ...[
+                      const SizedBox(height: 8),
+                      _EvidenceLine(evidence: evidence),
+                    ] else
+                      ..._details(scheme),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
