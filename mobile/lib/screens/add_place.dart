@@ -35,16 +35,16 @@ class PickedPlace {
   final bool declined;
 }
 
-class AddPlaceMapScreen extends ConsumerStatefulWidget {
-  const AddPlaceMapScreen({super.key, this.placeToEdit});
+class AddPlaceScreen extends ConsumerStatefulWidget {
+  const AddPlaceScreen({super.key, this.placeToEdit});
 
   final Place? placeToEdit;
 
   @override
-  ConsumerState<AddPlaceMapScreen> createState() => _AddPlaceMapScreenState();
+  ConsumerState<AddPlaceScreen> createState() => _AddPlaceScreenState();
 }
 
-class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
+class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
   final _query = TextEditingController();
   final _queryFocus = FocusNode();
   final _search = PlacesSearchService();

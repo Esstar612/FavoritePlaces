@@ -1,6 +1,6 @@
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
-import 'package:favorite_places/screens/add_place_map.dart';
+import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/screens/home_shell.dart';
 import 'package:favorite_places/screens/profile.dart';
 import 'package:favorite_places/widgets/places_list.dart';
@@ -418,7 +418,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
               onPressed: () async {
                 await Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (ctx) => const AddPlaceMapScreen(),
+                    builder: (ctx) => const AddPlaceScreen(),
                   ),
                 );
               },
