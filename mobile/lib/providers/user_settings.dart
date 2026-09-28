@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:favorite_places/config.dart';
+import 'package:favorite_places/utils/units.dart';
 
 /// User preferences, mirrored from `GET /user/settings`.
 ///
@@ -19,6 +20,7 @@ class UserSettings {
     this.emailNotifications = true,
     this.pushNotifications = true,
     this.dataSharing = false,
+    this.distanceUnit,
   });
 
   final int defaultRadius;
@@ -26,6 +28,9 @@ class UserSettings {
   final bool emailNotifications;
   final bool pushNotifications;
   final bool dataSharing;
+  final DistanceUnit? distanceUnit;
+
+  DistanceUnit unitFor(Locale locale) => distanceUnit ?? defaultUnitFor(locale);
 
   ThemeMode get themeMode =>
       theme == 'light' ? ThemeMode.light : ThemeMode.dark;
@@ -36,6 +41,7 @@ class UserSettings {
         emailNotifications: json['emailNotifications'] as bool? ?? true,
         pushNotifications: json['pushNotifications'] as bool? ?? true,
         dataSharing: json['dataSharing'] as bool? ?? false,
+        distanceUnit: DistanceUnit.values.asNameMap()[json['distanceUnit']],
       );
 
   Map<String, dynamic> toJson() => {
@@ -52,6 +58,7 @@ class UserSettings {
     bool? emailNotifications,
     bool? pushNotifications,
     bool? dataSharing,
+    DistanceUnit? distanceUnit,
   }) =>
       UserSettings(
         defaultRadius: defaultRadius ?? this.defaultRadius,
@@ -59,6 +66,7 @@ class UserSettings {
         emailNotifications: emailNotifications ?? this.emailNotifications,
         pushNotifications: pushNotifications ?? this.pushNotifications,
         dataSharing: dataSharing ?? this.dataSharing,
+        distanceUnit: distanceUnit ?? this.distanceUnit,
       );
 }
 
@@ -157,4 +165,10 @@ final userSettingsProvider =
 /// Theme currently in force. Watched by MyApp.
 final themeModeProvider = Provider<ThemeMode>(
   (ref) => ref.watch(userSettingsProvider).themeMode,
+);
+
+final distanceUnitProvider = Provider<DistanceUnit>(
+  (ref) => ref
+      .watch(userSettingsProvider)
+      .unitFor(WidgetsBinding.instance.platformDispatcher.locale),
 );
