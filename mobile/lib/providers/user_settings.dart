@@ -30,13 +30,20 @@ class UserSettings {
   final bool dataSharing;
   final DistanceUnit? distanceUnit;
 
+  static const minRadius = 1000;
+  static const maxRadius = 50000;
+
   DistanceUnit unitFor(Locale locale) => distanceUnit ?? defaultUnitFor(locale);
 
-  ThemeMode get themeMode =>
-      theme == 'light' ? ThemeMode.light : ThemeMode.dark;
+  // Light, dark, or follow the phone; anything unknown stays dark, the app's default look.
+  ThemeMode get themeMode => switch (theme) {
+        'light' => ThemeMode.light,
+        'system' => ThemeMode.system,
+        _ => ThemeMode.dark,
+      };
 
   factory UserSettings.fromJson(Map<String, dynamic> json) => UserSettings(
-        defaultRadius: (json['defaultRadius'] as num?)?.toInt() ?? 1000,
+        defaultRadius: ((json['defaultRadius'] as num?)?.toInt() ?? minRadius).clamp(minRadius, maxRadius),
         theme: json['theme'] as String? ?? 'dark',
         emailNotifications: json['emailNotifications'] as bool? ?? true,
         pushNotifications: json['pushNotifications'] as bool? ?? true,
@@ -47,6 +54,7 @@ class UserSettings {
   Map<String, dynamic> toJson() => {
         'defaultRadius': defaultRadius,
         'theme': theme,
+        if (distanceUnit case final unit?) 'distanceUnit': unit.name,
         'emailNotifications': emailNotifications,
         'pushNotifications': pushNotifications,
         'dataSharing': dataSharing,
@@ -61,7 +69,7 @@ class UserSettings {
     DistanceUnit? distanceUnit,
   }) =>
       UserSettings(
-        defaultRadius: defaultRadius ?? this.defaultRadius,
+        defaultRadius: (defaultRadius ?? this.defaultRadius).clamp(minRadius, maxRadius),
         theme: theme ?? this.theme,
         emailNotifications: emailNotifications ?? this.emailNotifications,
         pushNotifications: pushNotifications ?? this.pushNotifications,
