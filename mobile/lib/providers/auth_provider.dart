@@ -14,6 +14,10 @@ final authStateProvider = StreamProvider<User?>((ref) {
 
 final guestSeedingProvider = StateProvider<bool>((ref) => false);
 
+// google_sign_in 7 must be initialized exactly once before any other call; a
+// top-level final runs this on first use and never again.
+final Future<void> _googleSignInReady = GoogleSignIn.instance.initialize();
+
 // ─── Notifier: exposes sign-in / sign-up / sign-out actions ─────────────────
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   AuthNotifier(this._ref) : super(const AsyncValue.data(null));
@@ -88,17 +92,9 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
       return;
     }
     try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        // User cancelled
-        state = const AsyncValue.data(null);
-        return;
-      }
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      await _googleSignInReady;
+      final account = await GoogleSignIn.instance.authenticate();
+      final credential = GoogleAuthProvider.credential(idToken: account.authentication.idToken);
       final guest = FirebaseAuth.instance.currentUser;
       if (guest != null && guest.isAnonymous) {
         await guest.linkWithCredential(credential);
@@ -106,6 +102,8 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
         await FirebaseAuth.instance.signInWithCredential(credential);
       }
       state = const AsyncValue.data(null);
+    } on GoogleSignInException catch (e, st) {
+      state = e.code == GoogleSignInExceptionCode.canceled ? const AsyncValue.data(null) : AsyncValue.error(e, st);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -151,7 +149,10 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
       }
       // Web signs in with Firebase's popup, and google_sign_in has no web client ID, so
       // calling it there throws before Firebase ever signs out.
-      if (!kIsWeb) await GoogleSignIn().signOut();
+      if (!kIsWeb) {
+        await _googleSignInReady;
+        await GoogleSignIn.instance.signOut();
+      }
       await FirebaseAuth.instance.signOut();
       state = const AsyncValue.data(null);
     } catch (e, st) {
