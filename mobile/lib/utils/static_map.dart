@@ -35,7 +35,6 @@ String staticMapUrlFor(
       zoom: zoom,
     );
 
-// Match the app theme on the results card.
 const _darkStyle = '&style=element:geometry%7Ccolor:0x2a2631'
     '&style=element:labels.text.fill%7Ccolor:0xccc3d6'
     '&style=element:labels.text.stroke%7Ccolor:0x1d1a22'

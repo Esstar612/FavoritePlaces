@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Same palettes as the Static Maps styles in static_map.dart, so the live
-// map and Plan's route card read as one surface. Points of interest stay
-// visible here because they help people find what to add.
 const darkMapStyle = '''
 [
   {"elementType": "geometry", "stylers": [{"color": "#2a2631"}]},

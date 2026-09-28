@@ -24,7 +24,6 @@ class WebPhoneFrame extends StatelessWidget {
   static const double _cornerRadius = 44;
   static const double _bezel = 10;
 
-  // A real phone's status bar keeps top-aligned controls clear of the rounded corners.
   static const _statusBar = EdgeInsets.only(top: 24);
 
   @override

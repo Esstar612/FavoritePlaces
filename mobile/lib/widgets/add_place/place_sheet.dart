@@ -397,7 +397,7 @@ class _SavedHereNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (background, text, accent) = Theme.of(context).colorScheme.savedBanner;
+    final (:background, :text, :accent) = Theme.of(context).colorScheme.savedBanner;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 6, 4, 6),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(14)),

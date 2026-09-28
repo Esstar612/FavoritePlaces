@@ -51,8 +51,6 @@ final colorScheme = darkColorScheme;
 ThemeData _themeFor(ColorScheme scheme) {
   final base = ThemeData(
     useMaterial3: true,
-    // Bundled because Flutter web otherwise falls back to a single regular-weight Roboto,
-    // so the designs' medium (500) text renders regular.
     fontFamily: 'Roboto',
     // Per-scheme, not shared — a dark surface on the light scheme would be
     // unreadable.
@@ -105,7 +103,6 @@ void main() async {
     await loadGoogleMapsJs(AppConfig.googleMapsApiKey);
   }
 
-  // Riverpod 3 retries failing providers by default; the app shows its own retry instead.
   runApp(ProviderScope(retry: (_, _) => null, child: const MyApp()));
 }
 
