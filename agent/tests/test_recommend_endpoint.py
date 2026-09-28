@@ -43,6 +43,8 @@ def test_recommend_returns_only_the_users_grounded_places(client):
     assert returned_ids == COUNTS_AS_GROUNDED
     assert set(returned_ids) <= owned_ids
     assert any(call["name"] == "search_places" for call in body["tool_calls"])
+    assert all("result_place_ids" in call for call in body["tool_calls"])
+    assert body["legs"] == []
     assert body["overview"]
     assert "ungrounded_place_ids" not in body
     assert "rejected_place_ids" not in body
@@ -127,3 +129,71 @@ def test_recommend_rejects_bad_clarification_requests(client, body):
     response = client.post("/recommend", json=body)
 
     assert response.status_code == 422
+
+
+def _preflight(client, origin):
+    return client.options(
+        "/recommend",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://favorite-places-app-94adb.web.app",
+        "https://favorite-places-app-94adb.firebaseapp.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:8080",
+    ],
+)
+def test_preflight_from_the_app_is_allowed(client, origin):
+    response = _preflight(client, origin)
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+    assert "access-control-allow-credentials" not in response.headers
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["https://evil.example", "http://localhost.evil.example", "https://localhost:5173"],
+)
+def test_preflight_from_other_origins_is_refused(client, origin):
+    response = _preflight(client, origin)
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
+@pytest.mark.parametrize("start_place_id", ["other-dolores-park", "made-up-id"])
+def test_recommend_rejects_a_start_place_that_is_not_the_users(client, start_place_id):
+    client.app.dependency_overrides[get_verified_uid] = lambda: DEMO_UID
+
+    response = client.post(
+        "/recommend", json={"message": "coffee", "start_place_id": start_place_id}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "start_place_id is not one of your places"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"start_place_id": "demo-blue-bottle"},
+        {"start_place_id": "demo-blue-bottle", "clarification": CLARIFICATION},
+    ],
+    ids=["alone", "with-clarification"],
+)
+def test_recommend_accepts_a_start_place(client, body):
+    client.app.dependency_overrides[get_verified_uid] = lambda: DEMO_UID
+
+    response = client.post("/recommend", json=body)
+
+    assert response.status_code == 200
+    assert response.json()["recommendations"][0]["place_id"] == "demo-blue-bottle"

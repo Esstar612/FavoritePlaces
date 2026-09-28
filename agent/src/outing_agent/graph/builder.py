@@ -53,6 +53,10 @@ CLARIFIED_NOTE = """
 
 The user has already answered a clarifying question. Recommend; do not ask another."""
 
+START_ONLY_NOTE = """
+
+The user asked you to plan from their starting place on your own. Recommend; do not ask a question."""
+
 FALLBACK_PROMPT = """Your draft answer used places you had not read, or it is an
 itinerary without a route. The draft and the missing tool results are below:
 details for each recommended place you had not read, and a route if the draft
@@ -121,6 +125,8 @@ def fallback_calls(state: AgentState) -> list[dict]:
 def finalize_prompt(state: AgentState) -> str:
     if state.get("clarification_allowed", True):
         return FINALIZE_PROMPT
+    if state.get("start_only"):
+        return FINALIZE_PROMPT + START_ONLY_NOTE
     return FINALIZE_PROMPT + CLARIFIED_NOTE
 
 

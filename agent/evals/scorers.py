@@ -60,12 +60,14 @@ def expected_recall(outputs: dict, reference_outputs: dict) -> dict:
     return {"key": "expected_recall", "score": min(len(found), needed) / needed}
 
 
-def details_before_recommending(outputs: dict, reference_outputs: dict) -> dict:
+def details_before_recommending(
+    outputs: dict, reference_outputs: dict, inputs: dict | None = None
+) -> dict:
     recommended = set(
         outputs.get("draft_grounded_place_ids", [])
         if _fallback_ran(outputs)
         else _recommended(outputs)
-    )
+    ) - {(inputs or {}).get("start_place_id")}
     if not recommended:
         return {"key": "details_before_recommending", "score": None}
     detailed = {

@@ -5,6 +5,7 @@ from functools import lru_cache
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from outing_agent import config
@@ -13,7 +14,13 @@ from outing_agent.api.rate_limit import RateLimiter
 from outing_agent.graph.builder import build_graph
 from outing_agent.places.store import PlacesStore, build_places_store
 from outing_agent.providers.factory import get_chat_model
-from outing_agent.run import RecommendedPlace, ToolCall, run_recommendation
+from outing_agent.run import (
+    Leg,
+    RecommendedPlace,
+    ToolCall,
+    UnknownStartPlace,
+    run_recommendation,
+)
 
 GLOBAL_KEY = "*"
 RATE_WINDOW_S = 3600
@@ -31,6 +38,13 @@ def _configure_logging() -> None:
 
 _configure_logging()
 app = FastAPI(title="Favorite Places Outing Agent")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.CORS_ORIGINS,
+    allow_origin_regex=config.CORS_ORIGIN_REGEX,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 
 @dataclass(frozen=True)
@@ -54,11 +68,14 @@ class RecommendRequest(BaseModel):
 
     message: str | None = Field(default=None, min_length=1, max_length=500)
     clarification: Clarification | None = None
+    start_place_id: str | None = Field(default=None, min_length=1, max_length=200)
 
     @model_validator(mode="after")
     def _one_of(self):
-        if (self.message is None) == (self.clarification is None):
-            raise ValueError("send either message or clarification")
+        if self.message is not None and self.clarification is not None:
+            raise ValueError("send message or clarification, not both")
+        if self.message is None and self.clarification is None and self.start_place_id is None:
+            raise ValueError("send a message, a clarification or a start place")
         return self
 
 
@@ -68,6 +85,7 @@ class RecommendResponse(BaseModel):
     model: str
     overview: str
     recommendations: list[RecommendedPlace]
+    legs: list[Leg]
     tool_calls: list[ToolCall]
     confidence: float | None
     clarifying_question: str | None
@@ -122,14 +140,18 @@ def recommend(
     store: PlacesStore = Depends(get_places_store),
     agent: Agent = Depends(get_agent),
 ) -> RecommendResponse:
-    result = run_recommendation(
-        agent.graph,
-        body.message,
-        clarification=body.clarification.model_dump() if body.clarification else None,
-        uid=uid,
-        store=store,
-        store_kind=config.PLACES_STORE,
-        provider=agent.provider,
-        model=agent.model,
-    )
+    try:
+        result = run_recommendation(
+            agent.graph,
+            body.message,
+            clarification=body.clarification.model_dump() if body.clarification else None,
+            start_place_id=body.start_place_id,
+            uid=uid,
+            store=store,
+            store_kind=config.PLACES_STORE,
+            provider=agent.provider,
+            model=agent.model,
+        )
+    except UnknownStartPlace:
+        raise HTTPException(422, "start_place_id is not one of your places") from None
     return RecommendResponse.model_validate(result.model_dump())

@@ -4,9 +4,13 @@ from pathlib import Path
 CASE_SETS = {
     "main": ("outing-agent-v1", Path(__file__).with_name("cases.json")),
     "holdout": ("outing-agent-holdout-v1", Path(__file__).with_name("cases_holdout.json")),
+    "start_place": (
+        "outing-agent-start-place-v1",
+        Path(__file__).with_name("cases_start_place.json"),
+    ),
 }
 
-INPUT_KEYS = ("uid", "message", "clarification")
+INPUT_KEYS = ("uid", "message", "clarification", "start_place_id")
 REFERENCE_KEYS = (
     "expected_place_ids",
     "forbidden_place_ids",

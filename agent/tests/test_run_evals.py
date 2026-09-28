@@ -1,6 +1,8 @@
 import json
 
-from evals.run_evals import check_scores
+import pytest
+
+from evals.run_evals import check_scores, enforces_thresholds
 from evals.thresholds import load_thresholds
 
 SCORES = {"grounded": [1.0, 1.0], "route_when_multi_stop": [1.0, 0.0], "fallback_rate": [1.0, 0.0]}
@@ -86,3 +88,16 @@ def test_eval_target_passes_clarification_through(monkeypatch):
     assert calls[0][1]["uid"] == "planner-user"
     assert calls[1][0] == "coffee"
     assert calls[1][1]["clarification"] is None
+
+
+@pytest.mark.parametrize(
+    "case_set, case_ids, expected",
+    [
+        ("main", None, True),
+        ("holdout", None, True),
+        ("start_place", None, False),
+        ("main", ["coffee-morning"], False),
+    ],
+)
+def test_thresholds_apply_only_to_full_main_and_holdout_runs(case_set, case_ids, expected):
+    assert enforces_thresholds(case_set, case_ids) is expected

@@ -4,14 +4,28 @@ from itertools import pairwise
 from types import SimpleNamespace
 
 import pytest
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 
 from outing_agent import run as run_module
-from outing_agent.graph.builder import build_graph
+from outing_agent.graph.builder import (
+    CLARIFIED_NOTE,
+    FINALIZE_PROMPT,
+    START_ONLY_NOTE,
+    build_graph,
+    finalize_prompt,
+)
 from outing_agent.graph.state import AgentContext
 from outing_agent.places.fixtures import DEMO_UID, OTHER_UID, PLANNER_UID
+from outing_agent.places.models import Place
 from outing_agent.places.store import FixturePlacesStore
-from outing_agent.run import RECURSION_LIMIT, run_recommendation
+from outing_agent.run import (
+    RECURSION_LIMIT,
+    RecommendedPlace,
+    UnknownStartPlace,
+    anchor_start,
+    request_text,
+    run_recommendation,
+)
 from outing_agent.tools.places_tools import TOOLS, get_place_details, plan_route, search_places
 from tests.fakes import (
     ALL_RECOMMENDED,
@@ -246,6 +260,7 @@ def test_fallback_reads_unread_picks_and_routes_an_itinerary():
     assert result.draft_place_ids == [BLUE_BOTTLE, TARTINE]
     assert result.draft_grounded_place_ids == [BLUE_BOTTLE, TARTINE]
     assert result.fallback_removed_place_ids == []
+    assert [(leg.from_place_id, leg.to_place_id) for leg in result.legs] == [(BLUE_BOTTLE, TARTINE)]
 
 
 def test_second_finalize_sees_the_draft_and_the_tool_results():
@@ -358,6 +373,7 @@ def test_low_confidence_escalates_with_the_question_and_no_places(monkeypatch):
     assert len(model.finalize_inputs) == 1
     assert {call.source for call in result.tool_calls} == {"model"}
     assert result.draft_place_ids == [BLUE_BOTTLE, TARTINE]
+    assert result.legs == []
 
 
 def test_confident_answer_is_not_escalated(monkeypatch):
@@ -447,3 +463,205 @@ def test_clarified_request_recommends_even_with_zero_confidence(monkeypatch):
     (finalize_messages,) = model.finalize_inputs
     assert finalize_messages[1].content == run_module.request_text(None, CLARIFICATION)
     assert "do not ask another" in finalize_messages[-1].content
+
+
+def _answer(payload, call_id):
+    return ToolMessage(json.dumps(payload), tool_call_id=call_id)
+
+
+def test_tool_calls_carry_the_places_each_call_returned():
+    messages = [
+        tool_turn("search_places", {"query": "coffee"}, "c1"),
+        _answer({"places": [{"id": "a"}, {"id": "b"}], "matched": 4, "total_saved": 5}, "c1"),
+        tool_turn("get_place_details", {"place_ids": ["a", "x"]}, "c2"),
+        _answer({"places": [{"id": "a"}], "not_found": ["x"], "truncated": []}, "c2"),
+        tool_turn("plan_route", {"place_ids": ["b", "a"]}, "c3"),
+        _answer({"order": ["b", "a"], "legs": [], "not_found": [], "truncated": []}, "c3"),
+    ]
+
+    calls = run_module.collect_tool_calls(messages, [])
+
+    assert [(c.name, c.result_place_ids, c.matched, c.source) for c in calls] == [
+        ("search_places", ["a", "b"], 4, "model"),
+        ("get_place_details", ["a"], None, "model"),
+        ("plan_route", ["b", "a"], None, "model"),
+    ]
+
+
+def test_fallback_calls_carry_their_results():
+    fallback = [
+        {
+            "name": "plan_route",
+            "args": {"place_ids": ["a", "b"]},
+            "result": json.dumps({"order": ["a", "b"], "legs": []}),
+        }
+    ]
+
+    [call] = run_module.collect_tool_calls([], fallback)
+
+    assert (call.source, call.result_place_ids, call.matched) == ("graph", ["a", "b"], None)
+
+
+def test_unparseable_tool_result_gives_no_places():
+    messages = [
+        tool_turn("search_places", {"query": "coffee"}, "c1"),
+        ToolMessage("Error: boom", tool_call_id="c1"),
+    ]
+
+    [call] = run_module.collect_tool_calls(messages, [])
+
+    assert (call.result_place_ids, call.matched) == ([], None)
+
+
+def _place(place_id, lat):
+    return Place(id=place_id, title=place_id, lat=lat, lng=-122.4, address="SF")
+
+
+def _stop(place_id, order):
+    return RecommendedPlace(
+        place_id=place_id, title=place_id, category="other", order=order, reason="r"
+    )
+
+
+def test_itinerary_legs_estimate_walking_minutes():
+    owned = {"a": _place("a", 37.77), "b": _place("b", 37.78), "c": _place("c", 37.81)}
+    stops = [_stop("a", 1), _stop("b", 2), _stop("c", 3)]
+
+    legs = run_module.walking_legs(stops, owned, "itinerary")
+
+    assert [(leg.from_place_id, leg.to_place_id, leg.walk_minutes) for leg in legs] == [
+        ("a", "b", 18),
+        ("b", "c", None),
+    ]
+
+
+def test_options_get_no_legs():
+    owned = {"a": _place("a", 37.77), "b": _place("b", 37.78)}
+
+    assert run_module.walking_legs([_stop("a", 1), _stop("b", 2)], owned, "options") == []
+
+
+def test_one_stop_gets_no_legs():
+    assert run_module.walking_legs([_stop("a", 1)], {"a": _place("a", 37.77)}, "itinerary") == []
+
+
+def _ids(stops):
+    return [stop.place_id for stop in stops]
+
+
+@pytest.mark.parametrize(
+    "kind, stops, expected_ids, expected_kind",
+    [
+        ("itinerary", ["x", "s", "y"], ["s", "x", "y"], "itinerary"),
+        ("itinerary", ["x", "y"], ["s", "x", "y"], "itinerary"),
+        ("options", ["x", "s", "y"], ["s", "x"], "itinerary"),
+        ("options", ["s"], ["s"], "options"),
+        ("options", [], [], "options"),
+    ],
+    ids=["reorder", "insert", "trim-options", "only-start", "nothing"],
+)
+def test_anchor_start(kind, stops, expected_ids, expected_kind):
+    start = _place("s", 37.77)
+    stop_list = [_stop(place_id, i) for i, place_id in enumerate(stops, 1)]
+
+    anchored, anchored_kind = anchor_start(stop_list, start, kind)
+
+    assert _ids(anchored) == expected_ids
+    assert [stop.order for stop in anchored] == list(range(1, len(expected_ids) + 1))
+    assert anchored_kind == expected_kind
+
+
+def test_inserted_start_place_has_an_empty_reason():
+    anchored, _ = anchor_start([_stop("x", 1)], _place("s", 37.77), "itinerary")
+
+    assert anchored[0].reason == ""
+
+
+def test_request_text_is_unchanged_without_a_start_place():
+    assert request_text("coffee", None, None) == "coffee"
+    assert request_text(None, CLARIFICATION, None) == request_text(None, CLARIFICATION)
+
+
+def _run_from(start_place_id, store=None, model=None):
+    model = model or scripted_model(ALL_RECOMMENDED)
+    return model, run_recommendation(
+        build_graph(model),
+        "a slow coffee morning",
+        start_place_id=start_place_id,
+        uid=DEMO_UID,
+        store=store or FixturePlacesStore(),
+        store_kind="fixture",
+        provider="fake",
+        model="scripted",
+    )
+
+
+def test_run_from_a_start_place_puts_it_first_with_one_leg():
+    model, result = _run_from(TARTINE)
+
+    assert _ids(result.recommendations) == [TARTINE, BLUE_BOTTLE]
+    assert result.kind == "itinerary"
+    assert [(leg.from_place_id, leg.to_place_id) for leg in result.legs] == [(TARTINE, BLUE_BOTTLE)]
+    assert result.start_place_id == TARTINE
+    (finalize_messages,) = model.finalize_inputs
+    assert finalize_messages[1].content == (
+        "Plan an outing that starts at Tartine Bakery (demo-tartine), then a slow coffee morning"
+    )
+
+
+def test_run_without_a_start_place_sends_the_plain_request():
+    model, _ = _run_from(None)
+
+    (finalize_messages,) = model.finalize_inputs
+    assert finalize_messages[1].content == "a slow coffee morning"
+
+
+def test_unknown_start_place_fails_before_the_graph_runs():
+    store = CountingStore()
+    model = scripted_model(ALL_RECOMMENDED)
+
+    with pytest.raises(UnknownStartPlace):
+        _run_from("other-dolores-park", store=store, model=model)
+
+    assert store.calls == 1
+    assert model.finalize_inputs == []
+
+
+def test_finalize_prompt_notes():
+    assert finalize_prompt({"clarification_allowed": True}) == FINALIZE_PROMPT
+    assert finalize_prompt({"clarification_allowed": False}) == FINALIZE_PROMPT + CLARIFIED_NOTE
+    assert finalize_prompt({"clarification_allowed": False, "start_only": True}) == (
+        FINALIZE_PROMPT + START_ONLY_NOTE
+    )
+
+
+def _low_confidence_run(monkeypatch, message):
+    _with_threshold(monkeypatch, 0.6)
+    model = scripted_model(ALL_RECOMMENDED, confidence=0.3)
+    result = run_recommendation(
+        build_graph(model),
+        message,
+        start_place_id=BLUE_BOTTLE,
+        uid=DEMO_UID,
+        store=FixturePlacesStore(),
+        store_kind="fixture",
+        provider="fake",
+        model="scripted",
+    )
+    return model, result
+
+
+def test_a_start_place_alone_never_asks(monkeypatch):
+    model, result = _low_confidence_run(monkeypatch, None)
+
+    assert result.escalated is False
+    assert result.recommendations[0].place_id == BLUE_BOTTLE
+    (finalize_messages,) = model.finalize_inputs
+    assert finalize_messages[-1].content.endswith(START_ONLY_NOTE)
+
+
+def test_a_start_place_with_a_message_can_still_ask(monkeypatch):
+    _, result = _low_confidence_run(monkeypatch, "somewhere nice")
+
+    assert result.escalated is True
+    assert result.recommendations == []

@@ -18,6 +18,8 @@ from outing_agent.run import run_recommendation
 
 DEFAULT_REPETITIONS = 3
 MAX_CONCURRENCY = 4
+# Sets too small or too different to compare with thresholds set on the main cases.
+THRESHOLDLESS_CASE_SETS = {"start_place"}
 
 
 def make_target(provider: str):
@@ -29,6 +31,7 @@ def make_target(provider: str):
             graph,
             inputs.get("message"),
             clarification=inputs.get("clarification"),
+            start_place_id=inputs.get("start_place_id"),
             uid=inputs["uid"],
             store=FixturePlacesStore(),
             store_kind="fixture",
@@ -38,6 +41,10 @@ def make_target(provider: str):
         return result.model_dump()
 
     return target
+
+
+def enforces_thresholds(case_set: str, case_ids: list[str] | None) -> bool:
+    return not case_ids and case_set not in THRESHOLDLESS_CASE_SETS
 
 
 def git_revision() -> str:
@@ -139,6 +146,7 @@ def main() -> int:
 
     revision = git_revision()
     thresholds = load_thresholds()
+    enforce = enforces_thresholds(args.cases, args.case)
     failures = []
     for provider in providers:
         results = evaluate(
@@ -160,9 +168,8 @@ def main() -> int:
         )
         scores = collect_scores(results)
         print(f"\n{provider} ({config.MODELS[provider]}), experiment {results.experiment_name}")
-        # A few targeted cases can't be compared with thresholds set on the full case set.
         lines, provider_failures = check_scores(
-            provider, scores, thresholds, enforce_thresholds=not args.case
+            provider, scores, thresholds, enforce_thresholds=enforce
         )
         print("\n".join(lines))
         failures.extend(provider_failures)
@@ -176,11 +183,7 @@ def main() -> int:
     if failures:
         print(f"\nFailures: {', '.join(failures)}")
         return 1
-    print(
-        "\nAll gates and thresholds passed."
-        if thresholds and not args.case
-        else "\nAll gates passed."
-    )
+    print("\nAll gates and thresholds passed." if thresholds and enforce else "\nAll gates passed.")
     return 0
 
 
