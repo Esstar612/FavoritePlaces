@@ -25,8 +25,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 Future<void> signUpWithEmail(String email, String password, String displayName) async {
   state = const AsyncValue.loading();
   try {
-    final credential = await FirebaseAuth.instance
-        .createUserWithEmailAndPassword(email: email, password: password);
+    final guest = FirebaseAuth.instance.currentUser;
+    final credential = guest != null && guest.isAnonymous
+        ? await guest.linkWithCredential(EmailAuthProvider.credential(email: email, password: password))
+        : await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
 
     // Set the display name on the new user
     await credential.user?.updateDisplayName(displayName);
@@ -70,7 +72,12 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
       // Firebase's own popup, so the button can match the design; the web
       // google_sign_in plugin only offers Google's rendered button.
       try {
-        await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+        final guest = FirebaseAuth.instance.currentUser;
+        if (guest != null && guest.isAnonymous) {
+          await guest.linkWithPopup(GoogleAuthProvider());
+        } else {
+          await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+        }
         state = const AsyncValue.data(null);
       } on FirebaseAuthException catch (e, st) {
         const cancelled = {'popup-closed-by-user', 'cancelled-popup-request', 'user-cancelled'};
@@ -92,7 +99,12 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      await FirebaseAuth.instance.signInWithCredential(credential);
+      final guest = FirebaseAuth.instance.currentUser;
+      if (guest != null && guest.isAnonymous) {
+        await guest.linkWithCredential(credential);
+      } else {
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      }
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -161,6 +173,11 @@ final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<void>>(
       (ref) => AuthNotifier(ref),
     );
+
+const _accountExistsCodes = {'email-already-in-use', 'credential-already-in-use'};
+
+bool isAccountExistsError(Object error) =>
+    error is FirebaseAuthException && _accountExistsCodes.contains(error.code);
 
 // ─── Convenience: human-readable Firebase error messages ────────────────────
 String firebaseAuthErrorMessage(Object error) {

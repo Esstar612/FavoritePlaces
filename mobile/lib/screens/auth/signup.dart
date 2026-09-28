@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:favorite_places/providers/auth_provider.dart';
+import 'package:favorite_places/services/firestore_service.dart';
 import 'package:favorite_places/utils/password_strength.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
@@ -60,6 +61,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       return;
     }
 
+    final wasGuest = _isGuest;
     await ref.read(authNotifierProvider.notifier).signUpWithEmail(
           _emailController.text.trim(),
           _passwordController.text.trim(),
@@ -67,13 +69,56 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         );
 
     if (!mounted) return;
-    if (!ref.read(authNotifierProvider).hasError) _leave();
+    if (!ref.read(authNotifierProvider).hasError) _finish(wasGuest);
   }
 
   Future<void> _signUpWithGoogle() async {
+    final wasGuest = _isGuest;
     await ref.read(authNotifierProvider.notifier).signInWithGoogle();
     if (!mounted) return;
-    if (FirebaseAuth.instance.currentUser != null) _leave();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.isAnonymous) _finish(wasGuest);
+  }
+
+  bool get _isGuest => FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
+
+  void _finish(bool wasGuest) {
+    final messenger = ScaffoldMessenger.of(context);
+    _leave();
+    if (wasGuest) _dropSamples(messenger);
+  }
+
+  // The account is already upgraded at this point; failing here only leaves the samples in the list.
+  Future<void> _dropSamples(ScaffoldMessengerState messenger) async {
+    try {
+      final removed = await FirestoreService.deleteSamplePlaces();
+      if (removed > 0) {
+        messenger.showSnackBar(SnackBar(content: Text('Removed $removed sample places')));
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: const Text("Couldn't remove the sample places"),
+        action: SnackBarAction(label: 'Retry', onPressed: () => _dropSamples(messenger)),
+      ));
+    }
+  }
+
+  Future<void> _offerSignIn() async {
+    final signIn = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('That account already exists'),
+        content: const Text("Sign in to it instead? Places you added as a guest won't carry over."),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Sign in')),
+        ],
+      ),
+    );
+    if (signIn != true || !mounted) return;
+    final navigator = Navigator.of(context);
+    await ref.read(authNotifierProvider.notifier).signOut();
+    navigator.popUntil((route) => route.isFirst);
   }
 
   void _continueAsGuest() {
@@ -92,7 +137,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
 
     ref.listen<AsyncValue<void>>(authNotifierProvider, (previous, next) {
-      next.whenOrNull(error: (error, _) => _showSnackBar(firebaseAuthErrorMessage(error)));
+      next.whenOrNull(error: (error, _) {
+        if (isAccountExistsError(error) && _isGuest) {
+          _offerSignIn();
+        } else {
+          _showSnackBar(firebaseAuthErrorMessage(error));
+        }
+      });
     });
 
     final password = _passwordController.text.trim();
@@ -240,11 +291,12 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                           ),
                         ],
                       ),
-                      TextButton(
-                        style: link,
-                        onPressed: isLoading ? null : _continueAsGuest,
-                        child: const Text('Just looking? Continue as guest'),
-                      ),
+                      if (!_isGuest)
+                        TextButton(
+                          style: link,
+                          onPressed: isLoading ? null : _continueAsGuest,
+                          child: const Text('Just looking? Continue as guest'),
+                        ),
                     ],
                   ),
                 ),
