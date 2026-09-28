@@ -25,8 +25,8 @@ class AuthGate extends ConsumerWidget {
     // userChanges also fires on profile updates (display name), so the places stream
     // and settings only restart when the uid actually changes.
     ref.listen(authStateProvider, (previous, next) {
-      final before = previous?.valueOrNull?.uid;
-      final after = next.valueOrNull?.uid;
+      final before = previous?.value?.uid;
+      final after = next.value?.uid;
       if (before == after) return;
       if (after != null) {
         ref.read(userPlacesProvider.notifier).startListening();

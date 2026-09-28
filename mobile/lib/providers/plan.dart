@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/services/agent_service.dart';

@@ -105,7 +105,8 @@ void main() async {
     await loadGoogleMapsJs(AppConfig.googleMapsApiKey);
   }
 
-  runApp(const ProviderScope(child: MyApp()));
+  // Riverpod 3 retries failing providers by default; the app shows its own retry instead.
+  runApp(ProviderScope(retry: (_, _) => null, child: const MyApp()));
 }
 
 class MyApp extends ConsumerWidget {
