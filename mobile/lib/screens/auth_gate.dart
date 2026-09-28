@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/providers/user_settings.dart';
+import 'package:favorite_places/screens/auth/guest_loading.dart';
 import 'package:favorite_places/screens/auth/login.dart';
 import 'package:favorite_places/screens/home_shell.dart';
 
@@ -13,7 +14,9 @@ import 'package:favorite_places/screens/home_shell.dart';
 ///   • stops both and clears state when they sign out
 ///   • routes to LoginScreen or HomeShell accordingly
 class AuthGate extends ConsumerWidget {
-  const AuthGate({super.key});
+  const AuthGate({super.key, this.home = const HomeShell()});
+
+  final Widget home;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,13 +59,14 @@ class AuthGate extends ConsumerWidget {
         ),
       ),
       data: (user) {
+        if (ref.watch(guestSeedingProvider)) return const GuestLoadingScreen();
         if (user == null) return const LoginScreen();
 
         // Cold start: ref.listen above doesn't fire for the stream's initial
         // value, so kick both off here too. Each is idempotent.
         ref.read(userPlacesProvider.notifier).startListening();
         ref.read(userSettingsProvider.notifier).load();
-        return const HomeShell();
+        return home;
       },
     );
   }

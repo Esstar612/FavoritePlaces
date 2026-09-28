@@ -11,19 +11,23 @@ class DemoService {
   /// The backend is idempotent — it refuses if the account already has places
   /// — so calling this on every guest sign-in is safe. Failure is non-fatal:
   /// the guest just lands on an empty list.
-  static Future<bool> seed() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return false;
-
+  static Future<bool> seed({
+    http.Client? client,
+    Future<String?> Function()? idToken,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final getToken = idToken ?? () async => FirebaseAuth.instance.currentUser?.getIdToken();
     try {
-      final token = await user.getIdToken();
-      final response = await http.post(
+      final token = await getToken();
+      if (token == null) return false;
+      final post = client?.post ?? http.post;
+      final response = await post(
         Uri.parse('${AppConfig.backendUrl}/user/seed-demo'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(timeout);
       if (response.statusCode != 200) {
         debugPrint('Demo seed failed: ${response.statusCode} ${response.body}');
         return false;

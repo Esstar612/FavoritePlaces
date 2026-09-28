@@ -11,9 +11,13 @@ final authStateProvider = StreamProvider<User?>((ref) {
   return FirebaseAuth.instance.authStateChanges();
 });
 
+final guestSeedingProvider = StateProvider<bool>((ref) => false);
+
 // ─── Notifier: exposes sign-in / sign-up / sign-out actions ─────────────────
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {
-  AuthNotifier() : super(const AsyncValue.data(null));
+  AuthNotifier(this._ref) : super(const AsyncValue.data(null));
+
+  final Ref _ref;
 
  
 // ── Email / Password sign-up ─────────────────────────────────────────────
@@ -102,6 +106,7 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
   /// existing security rules apply unchanged.
   Future<void> continueAsGuest() async {
     state = const AsyncValue.loading();
+    _ref.read(guestSeedingProvider.notifier).state = true;
     try {
       await FirebaseAuth.instance.signInAnonymously();
       // Non-fatal: a guest with an empty list is worse than one with samples,
@@ -112,6 +117,8 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
       state = AsyncValue.error(e, StackTrace.empty);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+    } finally {
+      _ref.read(guestSeedingProvider.notifier).state = false;
     }
   }
 
@@ -151,7 +158,7 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
 
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<void>>(
-      (ref) => AuthNotifier(),
+      (ref) => AuthNotifier(ref),
     );
 
 // ─── Convenience: human-readable Firebase error messages ────────────────────
