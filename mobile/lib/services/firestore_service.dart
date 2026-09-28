@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 const _uuid = Uuid();
@@ -19,15 +18,19 @@ class FirestoreService {
 
   // ── UPLOAD ───────────────────────────────────────────────────────────────
   /// Upload a single image → return its download URL.
-  static Future<String> uploadPhoto(File image) async {
+  static Future<String> uploadPhoto(XFile image) async {
     final ref = FirebaseStorage.instance
         .ref('users/$_uid/photos/${_uuid.v4()}.jpg');
-    await ref.putFile(image);
+    // putFile has no web implementation; bytes upload the same way everywhere.
+    await ref.putData(
+      await image.readAsBytes(),
+      SettableMetadata(contentType: image.mimeType ?? 'image/jpeg'),
+    );
     return await ref.getDownloadURL();
   }
 
   /// Upload every image in the list → return all URLs.
-  static Future<List<String>> uploadPhotos(List<File> images) async {
+  static Future<List<String>> uploadPhotos(List<XFile> images) async {
     final urls = <String>[];
     for (final img in images) {
       urls.add(await uploadPhoto(img));
