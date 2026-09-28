@@ -68,7 +68,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // otherwise stay on top showing a signed-out profile.
   Future<void> _leaveAccount() async {
     final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     await ref.read(authNotifierProvider.notifier).signOut();
+    final state = ref.read(authNotifierProvider);
+    if (state.hasError) {
+      messenger.showSnackBar(SnackBar(content: Text(firebaseAuthErrorMessage(state.error!))));
+      return;
+    }
     navigator.popUntil((route) => route.isFirst);
   }
 
