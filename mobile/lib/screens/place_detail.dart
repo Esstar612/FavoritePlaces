@@ -113,7 +113,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
       );
 
   void _openMap(Place p) => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => MapScreen(location: p.location, isSelecting: false)),
+        MaterialPageRoute(builder: (_) => MapScreen(location: p.location, title: p.title)),
       );
 
   Future<void> _delete(Place p) async {

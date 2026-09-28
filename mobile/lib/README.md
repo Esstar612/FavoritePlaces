@@ -140,13 +140,12 @@ lib/
 │   └── user_places.dart     # State management + database
 ├── screens/
 │   ├── places.dart          # Main list screen
-│   ├── add_place.dart       # Add new place
+│   ├── add_place.dart       # Add or edit a place, map first
 │   ├── place_detail.dart    # View place details
-│   └── map.dart             # Map picker
+│   └── map.dart             # A place on the map
 └── widgets/
     ├── places_list.dart     # Place list widget
-    ├── image_input.dart     # Camera/gallery picker
-    └── location_input.dart  # Location picker
+    └── add_place/           # Add Place sheet and details form
 ```
 
 ### Database Schema
