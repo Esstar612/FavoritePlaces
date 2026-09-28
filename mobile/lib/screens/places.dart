@@ -1,6 +1,7 @@
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/add_place.dart';
+import 'package:favorite_places/screens/home_shell.dart';
 import 'package:favorite_places/screens/profile.dart';
 import 'package:favorite_places/widgets/places_list.dart';
 import 'package:favorite_places/providers/auth_provider.dart';
@@ -71,6 +72,15 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
         const SnackBar(content: Text("Couldn't refresh. Check your connection.")),
       );
     }
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _aiMatchIds = null;
+      _aiExplanation = null;
+    });
   }
 
   void _clearAiSearch() {
@@ -169,6 +179,8 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
     final allPlaces = ref.watch(userPlacesProvider);
     final scoped = widget.favoritesOnly ? allPlaces.where((p) => p.isFavorite).toList() : allPlaces;
     final filteredPlaces = _getFilteredAndSortedPlaces();
+    final answering = _aiExplanation != null && _aiMatchIds != null;
+    final scheme = Theme.of(context).colorScheme;
     final user = ref.watch(authStateProvider).value;
     
     return Scaffold(
@@ -213,9 +225,9 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search or ask, like "quiet to work"',
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.only(left: 16, right: 12),
-                    child: Icon(Icons.search),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 12),
+                    child: Icon(Icons.search, color: answering ? scheme.primary : null),
                   ),
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -223,32 +235,35 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                       if (_searchQuery.isNotEmpty)
                         IconButton(
                           icon: const Icon(Icons.clear),
-                          tooltip: 'Clear',
-                          onPressed: () {
-                            _searchController.clear();
-                            _clearAiSearch();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
+                          tooltip: 'Clear search',
+                          onPressed: _clearSearch,
                         ),
-                      IconButton(
-                        icon: _aiSearching
-                            ? const SizedBox(
-                                width: 18, height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.primary),
-                        tooltip: 'Ask AI',
-                        onPressed: (_aiSearching || _searchQuery.trim().isEmpty)
-                            ? null
-                            : _runAiSearch,
-                      ),
+                      if (!answering)
+                        IconButton(
+                          icon: _aiSearching
+                              ? const SizedBox(
+                                  width: 18, height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.primary),
+                          tooltip: 'Ask AI',
+                          onPressed: (_aiSearching || _searchQuery.trim().isEmpty)
+                              ? null
+                              : _runAiSearch,
+                        ),
                     ],
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(28),
                     borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: answering ? BorderSide(color: scheme.primary, width: 2) : BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide(color: scheme.primary, width: 2),
                   ),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -266,43 +281,19 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
               ),
             ),
 
-            // ── AI answer banner ───────────────────────────────────────────
-            if (_aiExplanation != null)
+            if (answering)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.auto_awesome, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _aiExplanation!,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: _clearAiSearch,
-                        child: const Padding(
-                          padding: EdgeInsets.only(left: 8),
-                          child: Icon(Icons.close, size: 18),
-                        ),
-                      ),
-                    ],
-                  ),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: _AnswerCard(
+                  fit: filteredPlaces.length,
+                  total: scoped.length,
+                  explanation: _aiExplanation!,
+                  onClear: _clearSearch,
+                  onPlan: () => openPlan(context, ref, draft: _searchController.text),
                 ),
               ),
 
-            if (scoped.isNotEmpty) ...[
+            if (scoped.isNotEmpty && !answering) ...[
               _CategoryChips(
                 places: scoped,
                 selected: _filterCategory,
@@ -357,7 +348,10 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                 builder: (context, snapshot) =>
                     snapshot.connectionState == ConnectionState.waiting
                         ? const Center(child: CircularProgressIndicator())
-                        : PlacesList(places: filteredPlaces),
+                        : PlacesList(
+                            places: filteredPlaces,
+                            evidenceQuery: answering ? _searchController.text : null,
+                          ),
               ),
             ),
           ],
@@ -462,6 +456,83 @@ class _CategoryChips extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnswerCard extends StatelessWidget {
+  const _AnswerCard({
+    required this.fit,
+    required this.total,
+    required this.explanation,
+    required this.onClear,
+    required this.onPlan,
+  });
+
+  final int fit;
+  final int total;
+  final String explanation;
+  final VoidCallback onClear;
+  final VoidCallback onPlan;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    fit == 0
+                        ? 'None of your $total places fit'
+                        : '$fit of your $total ${total == 1 ? 'place fits' : 'places fit'}',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: scheme.primary),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Clear answer and show all places',
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: onClear,
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Text(explanation, style: const TextStyle(fontSize: 16, height: 24 / 16)),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(right: 8, bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(onPressed: onClear, child: const Text('Show all places')),
+                  if (fit > 0) ...[
+                    const SizedBox(width: 4),
+                    FilledButton.tonalIcon(
+                      onPressed: onPlan,
+                      icon: const Icon(Icons.auto_awesome, size: 18),
+                      label: const Text('Plan with these'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -2,14 +2,16 @@ import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/screens/place_detail.dart';
+import 'package:favorite_places/utils/evidence.dart';
 import 'package:favorite_places/widgets/place_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PlacesList extends ConsumerWidget {
-  const PlacesList({super.key, required this.places});
+  const PlacesList({super.key, required this.places, this.evidenceQuery});
 
   final List<Place> places;
+  final String? evidenceQuery;
 
   void _showOptionsMenu(BuildContext context, Place place, WidgetRef ref) {
     showModalBottomSheet(
@@ -150,6 +152,7 @@ class PlacesList extends ConsumerWidget {
             ),
           ),
           onLongPress: () => _showOptionsMenu(context, place, ref),
+          evidence: evidenceQuery == null ? null : evidenceFor(place, evidenceQuery!),
         );
       },
     );

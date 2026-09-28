@@ -3,13 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
+import 'package:favorite_places/utils/evidence.dart';
 import 'package:favorite_places/utils/static_map.dart';
 import 'package:favorite_places/widgets/place_visuals.dart';
 
 class PlaceCard extends ConsumerWidget {
-  const PlaceCard({super.key, required this.place, required this.onTap, this.onLongPress});
+  const PlaceCard({
+    super.key,
+    required this.place,
+    required this.onTap,
+    this.onLongPress,
+    this.evidence,
+  });
 
   final Place place;
+  final Evidence? evidence;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
@@ -77,49 +85,96 @@ class PlaceCard extends ConsumerWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.place, size: 18, color: scheme.primary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          place.location.address,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (place.tags.isNotEmpty) ...[
+                  if (evidence case final evidence?) ...[
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [for (final tag in place.tags.take(2)) _Tag(label: tag)],
-                    ),
-                  ],
-                  if (place.notes.trim().isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      place.notes.trim(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 18 / 13,
-                        fontStyle: FontStyle.italic,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+                    _EvidenceLine(evidence: evidence),
+                  ] else
+                    ..._details(scheme),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  List<Widget> _details(ColorScheme scheme) => [
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(Icons.place, size: 18, color: scheme.primary),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                place.location.address,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+        if (place.tags.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [for (final tag in place.tags.take(2)) _Tag(label: tag)],
+          ),
+        ],
+        if (place.notes.trim().isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            place.notes.trim(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              height: 18 / 13,
+              fontStyle: FontStyle.italic,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ];
+}
+
+class _EvidenceLine extends StatelessWidget {
+  const _EvidenceLine({required this.evidence});
+
+  final Evidence evidence;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final (lead, quote) = switch (evidence) {
+      TagEvidence(:final tag) => ('Tagged ', tag),
+      NoteEvidence(:final excerpt) => ('From your note: ', excerpt),
+    };
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(Icons.auto_awesome, size: 16, color: scheme.tertiary),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              text: lead,
+              children: [
+                TextSpan(
+                  text: '\u201C$quote\u201D',
+                  style: TextStyle(fontStyle: FontStyle.italic, color: scheme.onSurface),
+                ),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, height: 20 / 14, color: scheme.onSurfaceVariant),
+          ),
+        ),
+      ],
     );
   }
 }
