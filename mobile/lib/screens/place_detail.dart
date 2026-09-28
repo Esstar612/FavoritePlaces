@@ -69,7 +69,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
       } catch (_) {}
     } catch (e) {
       if (!mounted) return;
-      setState(() { _loadingSummary = false; _summaryError = 'AI unavailable – make sure the backend is running.'; });
+      setState(() { _loadingSummary = false; _summaryError = "Couldn't reach the AI right now."; });
     }
   }
 
@@ -316,7 +316,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                       child: Text(current.notes, style: const TextStyle(fontSize: 16, height: 24 / 16)),
                     ),
                     const SizedBox(height: 22),
-                    ..._summarySection(current),
+                    _summaryCard(current),
                   ],
                   const SizedBox(height: 22),
                   _heading('Location'),
@@ -372,30 +372,106 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     );
   }
 
-  List<Widget> _summarySection(Place current) => [
-        _heading('Smart Summary'),
-        if (_effectiveSummary(current) case final s?) ...[
-          _summaryCard(context, s),
-          const SizedBox(height: 8),
-        ],
-        if (_loadingSummary) const Center(child: CircularProgressIndicator()),
-        if (_summaryError != null) ...[
-          Text(_summaryError!, style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 8),
-        ],
-        if (!_loadingSummary)
-          OutlinedButton.icon(
-            onPressed: () => _generateSummary(current),
-            icon: Icon(_effectiveSummary(current) != null ? Icons.refresh : Icons.auto_awesome),
-            label: Text(
-              _summaryError != null
-                  ? 'Try Again'
-                  : _effectiveSummary(current) != null
-                      ? 'Regenerate'
-                      : 'Generate Smart Summary',
+  Widget _summaryCard(Place current) {
+    final scheme = Theme.of(context).colorScheme;
+    final summary = _effectiveSummary(current);
+    final muted = TextStyle(fontSize: 14, height: 20 / 14, color: scheme.onSurfaceVariant);
+    return Semantics(
+      container: true,
+      label: 'AI summary',
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: scheme.primaryContainer,
+                  foregroundColor: scheme.onPrimaryContainer,
+                  child: const Icon(Icons.auto_awesome, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('AI summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                      if (summary != null && !_loadingSummary)
+                        Text('Made from your notes', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-      ];
+            const SizedBox(height: 12),
+            if (_loadingSummary) ...[
+              Text('Reading your notes', style: muted),
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+            ] else if (summary != null) ...[
+              _SummaryRow(
+                icon: Icons.favorite,
+                colors: (const Color(0xFF633B48), const Color(0xFFFFD9E3)),
+                title: 'Why you liked it',
+                body: summary.whyILikedIt,
+              ),
+              const SizedBox(height: 16),
+              _SummaryRow(
+                icon: Icons.lightbulb_outline,
+                colors: (scheme.primaryContainer, scheme.primary),
+                title: 'Tips',
+                body: summary.tips,
+              ),
+              const SizedBox(height: 16),
+              _SummaryRow(
+                icon: Icons.schedule,
+                colors: (const Color(0xFF4A3A10), const Color(0xFFF9C74F)),
+                title: 'Best time to go',
+                body: summary.bestTimeToGo,
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => _generateSummary(current),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Regenerate'),
+                ),
+              ),
+            ] else ...[
+              Text(
+                'Turn your notes into three quick answers: why you liked it, tips, and the best time to go.',
+                style: muted,
+              ),
+              if (_summaryError != null) ...[
+                const SizedBox(height: 8),
+                Text(_summaryError!, style: muted.copyWith(color: scheme.error)),
+              ],
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => _generateSummary(current),
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: Text(_summaryError != null ? 'Try again' : 'Summarize my notes'),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _heading(String title) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
@@ -440,34 +516,6 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
       ),
     );
   }
-
-  Widget _summaryCard(BuildContext context, PlaceSummary s) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _summaryRow(context, '💡 Why I Liked It', s.whyILikedIt),
-        const SizedBox(height: 10),
-        _summaryRow(context, '📝 Tips',            s.tips),
-        const SizedBox(height: 10),
-        _summaryRow(context, '🕐 Best Time',       s.bestTimeToGo),
-      ],
-    ),
-  );
-
-  Widget _summaryRow(BuildContext context, String label, String value) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold)),
-      const SizedBox(height: 2),
-      Text(value, style: Theme.of(context).textTheme.bodyMedium),
-    ],
-  );
 }
 
 void _noop() {}
@@ -525,6 +573,42 @@ class _Tag extends StatelessWidget {
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: scheme.onSecondaryContainer),
         ),
       ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.icon, required this.colors, required this.title, required this.body});
+
+  final IconData icon;
+  final (Color, Color) colors;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final (background, foreground) = colors;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: background,
+          foregroundColor: foreground,
+          child: Icon(icon, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w500, color: foreground)),
+              const SizedBox(height: 2),
+              Text(body, style: const TextStyle(fontSize: 15, height: 22 / 15)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
