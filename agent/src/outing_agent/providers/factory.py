@@ -24,6 +24,9 @@ def get_chat_model(provider: str | None = None, model: str | None = None) -> Bas
             max_tokens=MAX_OUTPUT_TOKENS,
             timeout=REQUEST_TIMEOUT_S,
             max_retries=2,
+            # Automatic caching: the breakpoint follows the conversation's last block, so each
+            # agent turn reads the previous turn's prefix instead of paying for it again.
+            model_kwargs={"cache_control": {"type": "ephemeral"}},
             **_api_key("ANTHROPIC_API_KEY"),
         )
     from langchain_openai import ChatOpenAI

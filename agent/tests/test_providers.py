@@ -1,5 +1,6 @@
 import pytest
 from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
 from outing_agent.config import MAX_OUTPUT_TOKENS, MODELS, REQUEST_TIMEOUT_S
@@ -21,6 +22,12 @@ def test_anthropic_model_settings():
     assert model.max_tokens == MAX_OUTPUT_TOKENS
     assert model.default_request_timeout == REQUEST_TIMEOUT_S
     assert model.max_retries == 2
+
+
+def test_anthropic_requests_ask_for_automatic_caching():
+    model = get_chat_model("anthropic")
+    payload = model._get_request_payload([HumanMessage("hi")])
+    assert payload["cache_control"] == {"type": "ephemeral"}
 
 
 def test_openai_model_settings():
