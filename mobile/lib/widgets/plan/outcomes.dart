@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:favorite_places/providers/plan.dart';
 import 'package:favorite_places/providers/user_places.dart';
-import 'package:favorite_places/screens/add_place.dart';
+import 'package:favorite_places/screens/add_place_map.dart';
 import 'package:favorite_places/widgets/plan/common.dart';
 import 'package:favorite_places/widgets/plan/trace.dart';
 
@@ -85,7 +85,7 @@ class PlanNothingFitsView extends ConsumerWidget {
               child: OutlinedButton.icon(
                 style: _compact,
                 onPressed: () => Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => const AddPlaceScreen())),
+                    .push(MaterialPageRoute(builder: (_) => const AddPlaceMapScreen())),
                 icon: const Icon(Icons.add, size: 18),
                 label: const FittedBox(child: Text('Save a place')),
               ),
