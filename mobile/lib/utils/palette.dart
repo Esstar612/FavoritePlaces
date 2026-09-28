@@ -23,4 +23,19 @@ extension Palette on ColorScheme {
   (Color, Color) get yellowBadge => _isLight
       ? (const Color(0xFFFFE7B3), const Color(0xFF7A5300))
       : (const Color(0xFF4A3A10), const Color(0xFFF9C74F));
+
+  (Color, Color) get pinkNote => _isLight
+      ? (const Color(0xFFFFD8E4), const Color(0xFF31111D))
+      : (const Color(0xFF3E2B33), const Color(0xFFFFD9E3));
+
+  // Background, text, then icon and action.
+  (Color, Color, Color) get savedBanner => _isLight
+      ? (const Color(0xFFFFD8E4), const Color(0xFF31111D), const Color(0xFF7D5260))
+      : (const Color(0xFF633B48), const Color(0xFFFFD9E3), const Color(0xFFF0B8C9));
+
+  (Color, Color) get pinkAction => _isLight
+      ? (const Color(0xFF7D5260), const Color(0xFFFFFFFF))
+      : (const Color(0xFFF0B8C9), const Color(0xFF492532));
+
+  Color get positive => _isLight ? const Color(0xFF3F8F55) : const Color(0xFF9AD1A8);
 }

@@ -4,9 +4,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
+import 'package:favorite_places/screens/place_detail.dart';
 import 'package:favorite_places/services/ai_service.dart';
 import 'package:favorite_places/services/places_search_service.dart';
 import 'package:favorite_places/utils/geo.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/utils/place_types.dart';
 import 'package:favorite_places/widgets/add_place/place_details_form.dart';
 import 'package:favorite_places/widgets/place_visuals.dart';
@@ -255,7 +257,7 @@ class _PlaceSheetState extends ConsumerState<PlaceSheet> {
         ],
         if (saved != null) ...[
           const SizedBox(height: 14),
-          _SavedHereNote(title: saved.title),
+          _SavedHereNote(place: saved),
         ],
         if (widget.expanded && !widget.lookingUp) ...[
           const SizedBox(height: 20),
@@ -389,25 +391,38 @@ class _CategoryMenu extends StatelessWidget {
 }
 
 class _SavedHereNote extends StatelessWidget {
-  const _SavedHereNote({required this.title});
+  const _SavedHereNote({required this.place});
 
-  final String title;
+  final Place place;
 
   @override
   Widget build(BuildContext context) {
-    const foreground = Color(0xFFFFD9E3);
+    final (background, text, accent) = Theme.of(context).colorScheme.savedBanner;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: const Color(0xFF3E2B33), borderRadius: BorderRadius.circular(10)),
+      padding: const EdgeInsets.fromLTRB(14, 6, 4, 6),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
-          const Icon(Icons.favorite, size: 16, color: foreground),
-          const SizedBox(width: 8),
+          Icon(Icons.favorite, size: 20, color: accent),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              "You've already saved $title here",
-              style: const TextStyle(fontSize: 13, height: 18 / 13, color: foreground),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(text: "You've already saved "),
+                  TextSpan(text: place.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  const TextSpan(text: ' here'),
+                ],
+              ),
+              style: TextStyle(fontSize: 14, height: 20 / 14, color: text),
             ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: accent),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => PlaceDetailScreen(place: place)),
+            ),
+            child: const Text('View'),
           ),
         ],
       ),

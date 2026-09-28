@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/services/firestore_service.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/utils/password_strength.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
@@ -319,8 +320,8 @@ class _StrengthMeter extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final fill = switch (strength) {
       PasswordStrength.tooShort || PasswordStrength.weak => scheme.error,
-      PasswordStrength.fair => const Color(0xFFF9C74F),
-      PasswordStrength.good || PasswordStrength.strong => const Color(0xFF9AD1A8),
+      PasswordStrength.fair => scheme.star,
+      PasswordStrength.good || PasswordStrength.strong => scheme.positive,
     };
     return Row(
       children: [
