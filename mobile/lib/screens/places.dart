@@ -10,7 +10,16 @@ import 'package:favorite_places/utils/user_display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum SortOption { recent, alphabetical, rating, category }
+enum SortOption {
+  recent('Recent'),
+  alphabetical('A to Z'),
+  rating('Rating'),
+  category('Category');
+
+  const SortOption(this.label);
+
+  final String label;
+}
 
 class PlacesScreen extends ConsumerStatefulWidget {
   const PlacesScreen({super.key, this.favoritesOnly = false});
@@ -158,54 +167,35 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   @override
   Widget build(BuildContext context) {
     final allPlaces = ref.watch(userPlacesProvider);
+    final scoped = widget.favoritesOnly ? allPlaces.where((p) => p.isFavorite).toList() : allPlaces;
     final filteredPlaces = _getFilteredAndSortedPlaces();
     final user = ref.watch(authStateProvider).value;
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.favoritesOnly ? 'Favorites' : 'Favorite Places'),
+        toolbarHeight: 64,
+        title: Text(
+          widget.favoritesOnly ? 'Favorites' : 'Favorite Places',
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+        ),
         actions: [
-          PopupMenuButton<SortOption>(
-            icon: const Icon(Icons.sort),
-            onSelected: (option) {
-              setState(() {
-                _sortOption = option;
-              });
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: SortOption.recent,
-                child: Text('Sort by Recent'),
-              ),
-              const PopupMenuItem(
-                value: SortOption.alphabetical,
-                child: Text('Sort A-Z'),
-              ),
-              const PopupMenuItem(
-                value: SortOption.rating,
-                child: Text('Sort by Rating'),
-              ),
-              const PopupMenuItem(
-                value: SortOption.category,
-                child: Text('Sort by Category'),
-              ),
-            ],
-          ),
-          // Profile avatar
           Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
+            padding: const EdgeInsets.only(right: 12),
+            child: Tooltip(
+              message: 'Profile',
+              child: InkResponse(
+                radius: 24,
+                onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                );
-              },
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: Text(
-                  avatarInitial(user),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                  child: Text(
+                    avatarInitial(user),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
             ),
@@ -218,12 +208,15 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
           children: [
             // Search Bar
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search, or ask "somewhere quiet to work"',
-                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search or ask, like "quiet to work"',
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(left: 16, right: 12),
+                    child: Icon(Icons.search),
+                  ),
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -245,7 +238,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                                 width: 18, height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.auto_awesome),
+                            : Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.primary),
                         tooltip: 'Ask AI',
                         onPressed: (_aiSearching || _searchQuery.trim().isEmpty)
                             ? null
@@ -254,9 +247,12 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                     ],
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide.none,
                   ),
                   filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
                 ),
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => _runAiSearch(),
@@ -306,45 +302,53 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                 ),
               ),
 
-            // Filter Chips
-            if (allPlaces.isNotEmpty)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+            if (scoped.isNotEmpty) ...[
+              _CategoryChips(
+                places: scoped,
+                selected: _filterCategory,
+                onSelected: (category) => setState(() => _filterCategory = category),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 8, 4),
                 child: Row(
                   children: [
-                    FilterChip(
-                      label: const Text('All'),
-                      selected: _filterCategory == null,
-                      onSelected: (selected) {
-                        setState(() {
-                          _filterCategory = null;
-                        });
-                      },
+                    Expanded(
+                      child: Text(
+                        '${filteredPlaces.length} ${filteredPlaces.length == 1 ? 'place' : 'places'}',
+                        style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    ...PlaceCategory.values.map((category) {
-                      final count = allPlaces.where((p) => p.category == category).length;
-                      if (count == 0) return const SizedBox.shrink();
-                      
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          label: Text('${category.icon} ${category.displayName} ($count)'),
-                          selected: _filterCategory == category,
-                          onSelected: (selected) {
-                            setState(() {
-                              _filterCategory = selected ? category : null;
-                            });
-                          },
+                    PopupMenuButton<SortOption>(
+                      tooltip: 'Sort: ${_sortOption.label}. Change sort',
+                      initialValue: _sortOption,
+                      onSelected: (option) => setState(() => _sortOption = option),
+                      itemBuilder: (context) => [
+                        for (final option in SortOption.values)
+                          PopupMenuItem(value: option, child: Text(option.label)),
+                      ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.sort, size: 18, color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              _sortOption.label,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    }),
+                      ),
+                    ),
                   ],
                 ),
               ),
-
-            const SizedBox(height: 8),
+            ],
 
             // Places List
             Expanded(
@@ -370,8 +374,96 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                 );
               },
               icon: const Icon(Icons.add),
-              label: const Text('Add Place'),
+              label: const Text('Add place'),
             ),
+    );
+  }
+}
+
+class _CategoryChips extends StatelessWidget {
+  const _CategoryChips({required this.places, required this.selected, required this.onSelected});
+
+  final List<Place> places;
+  final PlaceCategory? selected;
+  final ValueChanged<PlaceCategory?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final counts = <PlaceCategory, int>{};
+    for (final place in places) {
+      counts.update(place.category, (n) => n + 1, ifAbsent: () => 1);
+    }
+    final firstSeen = counts.keys.toList();
+    final ranked = [...firstSeen]..sort((a, b) {
+        final byCount = counts[b]!.compareTo(counts[a]!);
+        return byCount != 0 ? byCount : firstSeen.indexOf(a).compareTo(firstSeen.indexOf(b));
+      });
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Row(
+        children: [
+          _chip(context, null, 'All', places.length, selected == null, () => onSelected(null)),
+          for (final category in ranked) ...[
+            const SizedBox(width: 8),
+            _chip(
+              context,
+              category.icon,
+              category.displayName,
+              counts[category]!,
+              selected == category,
+              () => onSelected(selected == category ? null : category),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(BuildContext context, String? emoji, String label, int count, bool on, VoidCallback onTap) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = on ? scheme.onSecondaryContainer : scheme.onSurfaceVariant;
+    return Semantics(
+      selected: on,
+      button: true,
+      child: Material(
+        color: on ? scheme.secondaryContainer : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: on ? scheme.secondaryContainer : scheme.outlineVariant),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: SizedBox(
+            height: 32,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 12, 0),
+              child: Row(
+                children: [
+                  if (emoji != null) ...[
+                    Text(emoji, style: const TextStyle(fontSize: 15)),
+                    const SizedBox(width: 6),
+                  ] else if (on) ...[
+                    Icon(Icons.check, size: 18, color: color),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: color)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: on ? scheme.onSurfaceVariant : scheme.outline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
