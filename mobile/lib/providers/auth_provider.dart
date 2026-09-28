@@ -4,15 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:favorite_places/services/demo_service.dart';
+import 'package:favorite_places/utils/password_strength.dart';
 
 // ─── Stream provider: re-emits the current User (or null) ───────────────────
 final authStateProvider = StreamProvider<User?>((ref) {
   return FirebaseAuth.instance.authStateChanges();
 });
 
+final guestSeedingProvider = StateProvider<bool>((ref) => false);
+
 // ─── Notifier: exposes sign-in / sign-up / sign-out actions ─────────────────
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {
-  AuthNotifier() : super(const AsyncValue.data(null));
+  AuthNotifier(this._ref) : super(const AsyncValue.data(null));
+
+  final Ref _ref;
 
  
 // ── Email / Password sign-up ─────────────────────────────────────────────
@@ -60,6 +65,20 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
   // ── Google Sign-In ───────────────────────────────────────────────────────
   Future<void> signInWithGoogle() async {
     state = const AsyncValue.loading();
+    if (kIsWeb) {
+      // Firebase's own popup, so the button can match the design; the web
+      // google_sign_in plugin only offers Google's rendered button.
+      try {
+        await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+        state = const AsyncValue.data(null);
+      } on FirebaseAuthException catch (e, st) {
+        const cancelled = {'popup-closed-by-user', 'cancelled-popup-request', 'user-cancelled'};
+        state = cancelled.contains(e.code) ? const AsyncValue.data(null) : AsyncValue.error(e, st);
+      } catch (e, st) {
+        state = AsyncValue.error(e, st);
+      }
+      return;
+    }
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
@@ -87,6 +106,7 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
   /// existing security rules apply unchanged.
   Future<void> continueAsGuest() async {
     state = const AsyncValue.loading();
+    _ref.read(guestSeedingProvider.notifier).state = true;
     try {
       await FirebaseAuth.instance.signInAnonymously();
       // Non-fatal: a guest with an empty list is worse than one with samples,
@@ -97,6 +117,8 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
       state = AsyncValue.error(e, StackTrace.empty);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+    } finally {
+      _ref.read(guestSeedingProvider.notifier).state = false;
     }
   }
 
@@ -136,7 +158,7 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
 
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<void>>(
-      (ref) => AuthNotifier(),
+      (ref) => AuthNotifier(ref),
     );
 
 // ─── Convenience: human-readable Firebase error messages ────────────────────
@@ -148,7 +170,7 @@ String firebaseAuthErrorMessage(Object error) {
       case 'invalid-email':
         return 'The email address is not valid.';
       case 'weak-password':
-        return 'Password must be at least 6 characters.';
+        return 'Password must be at least $minPasswordLength characters.';
       case 'user-not-found':
         return 'No account found with this email. Please sign up first.';
       case 'wrong-password':
