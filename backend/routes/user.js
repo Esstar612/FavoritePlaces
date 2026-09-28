@@ -129,6 +129,9 @@ router.get('/settings', async (req, res) => {
   }
 });
 
+const THEMES = ['light', 'dark', 'system'];
+const DISTANCE_UNITS = ['km', 'mi'];
+
 // ───────────────────────────────────────────────────────────────────────────
 // PUT /user/settings
 // ───────────────────────────────────────────────────────────────────────────
@@ -138,12 +141,20 @@ router.get('/settings', async (req, res) => {
 router.put('/settings', async (req, res) => {
   try {
     const userId = req.user.uid;
-    const { defaultRadius, theme, emailNotifications, pushNotifications, dataSharing } = req.body;
+    const { defaultRadius, theme, distanceUnit, emailNotifications, pushNotifications, dataSharing } = req.body;
+
+    if (theme !== undefined && !THEMES.includes(theme)) {
+      return res.status(400).json({ error: 'Bad Request', message: `theme must be one of ${THEMES.join(', ')}` });
+    }
+    if (distanceUnit !== undefined && !DISTANCE_UNITS.includes(distanceUnit)) {
+      return res.status(400).json({ error: 'Bad Request', message: `distanceUnit must be one of ${DISTANCE_UNITS.join(', ')}` });
+    }
 
     // Build settings object with only provided fields
     const settingsUpdate = {};
     if (defaultRadius !== undefined) settingsUpdate.defaultRadius = parseInt(defaultRadius);
     if (theme !== undefined) settingsUpdate.theme = theme;
+    if (distanceUnit !== undefined) settingsUpdate.distanceUnit = distanceUnit;
     if (emailNotifications !== undefined) settingsUpdate.emailNotifications = emailNotifications;
     if (pushNotifications !== undefined) settingsUpdate.pushNotifications = pushNotifications;
     if (dataSharing !== undefined) settingsUpdate.dataSharing = dataSharing;
@@ -241,6 +252,7 @@ router.post('/seed-demo', async (req, res) => {
         notes: p.notes,
         rating: p.rating,
         isFavorite: p.isFavorite,
+        isSample: true,
         visitDate: new Date(now - (i + 1) * 86400000).toISOString(),
         // Descending so the list order is stable and matches this array.
         createdAt: new Date(now - i * 1000).toISOString(),
