@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:favorite_places/providers/auth_provider.dart';
+import 'package:favorite_places/utils/password_strength.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -37,8 +38,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     _showSnackBar('Please enter your email');
     return;
   }
-  if (_passwordController.text.trim().length < 6) {
-    _showSnackBar('Password must be at least 6 characters');
+  if (!passwordStrength(_passwordController.text.trim()).allowsSignUp) {
+    _showSnackBar('Password must be at least $minPasswordLength characters');
     return;
   }
   if (_passwordController.text != _confirmPasswordController.text) {

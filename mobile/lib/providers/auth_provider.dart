@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:favorite_places/services/demo_service.dart';
+import 'package:favorite_places/utils/password_strength.dart';
 
 // ─── Stream provider: re-emits the current User (or null) ───────────────────
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -162,7 +163,7 @@ String firebaseAuthErrorMessage(Object error) {
       case 'invalid-email':
         return 'The email address is not valid.';
       case 'weak-password':
-        return 'Password must be at least 6 characters.';
+        return 'Password must be at least $minPasswordLength characters.';
       case 'user-not-found':
         return 'No account found with this email. Please sign up first.';
       case 'wrong-password':
