@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import 'package:favorite_places/models/place.dart';
 import 'package:favorite_places/providers/user_places.dart';
@@ -277,12 +278,15 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                 Positioned.fill(
                   child: IgnorePointer(
                     ignoring: !searching,
-                    child: GestureDetector(
-                      onTap: _queryFocus.unfocus,
-                      child: AnimatedOpacity(
-                        opacity: searching ? 1 : 0,
-                        duration: const Duration(milliseconds: 150),
-                        child: const ColoredBox(color: Color(0x8C0C0A10)),
+                    child: PointerInterceptor(
+                      intercepting: searching,
+                      child: GestureDetector(
+                        onTap: _queryFocus.unfocus,
+                        child: AnimatedOpacity(
+                          opacity: searching ? 1 : 0,
+                          duration: const Duration(milliseconds: 150),
+                          child: const ColoredBox(color: Color(0x8C0C0A10)),
+                        ),
                       ),
                     ),
                   ),
@@ -296,14 +300,18 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                           child: Row(
                             children: [
-                              IconButton.filledTonal(
-                                tooltip: 'Cancel editing',
-                                icon: const Icon(Icons.close),
-                                onPressed: () => Navigator.of(context).maybePop(),
+                              PointerInterceptor(
+                                child: IconButton.filledTonal(
+                                  tooltip: 'Cancel editing',
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.of(context).maybePop(),
+                                ),
                               ),
                               if (_movingPin) ...[
                                 const SizedBox(width: 8),
-                                const Expanded(child: _Hint(text: 'Tap the map to move the pin')),
+                                Expanded(
+                                  child: PointerInterceptor(child: const _Hint(text: 'Tap the map to move the pin')),
+                                ),
                               ],
                             ],
                           ),
@@ -311,27 +319,31 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                       else
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                        child: _SearchPanel(
-                          controller: _query,
-                          focusNode: _queryFocus,
-                          open: searching,
-                          loading: _searching,
-                          suggestions: _suggestions,
-                          onChanged: _onQueryChanged,
-                          onClear: _clear,
-                          onChoose: _choose,
-                          onUseMyLocation: _useMyLocation,
-                          onDropPin: () {
-                            _queryFocus.unfocus();
-                            setState(() => _pinHint = true);
-                          },
+                        child: PointerInterceptor(
+                          child: _SearchPanel(
+                            controller: _query,
+                            focusNode: _queryFocus,
+                            open: searching,
+                            loading: _searching,
+                            suggestions: _suggestions,
+                            onChanged: _onQueryChanged,
+                            onClear: _clear,
+                            onChoose: _choose,
+                            onUseMyLocation: _useMyLocation,
+                            onDropPin: () {
+                              _queryFocus.unfocus();
+                              setState(() => _pinHint = true);
+                            },
+                          ),
                         ),
                       ),
                       if (!searching && _picked == null && widget.placeToEdit == null) ...[
                         const SizedBox(height: 12),
                         Center(
-                          child: _Hint(
-                            text: _pinHint ? 'Tap the map to drop a pin' : 'Or tap the map to drop a pin',
+                          child: PointerInterceptor(
+                            child: _Hint(
+                              text: _pinHint ? 'Tap the map to drop a pin' : 'Or tap the map to drop a pin',
+                            ),
                           ),
                         ),
                       ],
@@ -339,28 +351,30 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                   ),
                 ),
                 if (!searching && saved.isNotEmpty && _picked == null)
-                  Positioned(left: 16, bottom: 40, child: _Legend(color: scheme.primary)),
+                  Positioned(left: 16, bottom: 40, child: PointerInterceptor(child: _Legend(color: scheme.primary))),
                 if (!searching && !_sheetExpanded && widget.placeToEdit == null)
                   Positioned(
                     right: 16,
                     bottom: _picked == null ? 32 : 16,
-                    child: _picked == null
-                        ? FloatingActionButton.extended(
-                            heroTag: null,
-                            backgroundColor: scheme.secondaryContainer,
-                            foregroundColor: scheme.onSecondaryContainer,
-                            onPressed: _useMyLocation,
-                            icon: const Icon(Icons.my_location),
-                            label: const Text('Use my location'),
-                          )
-                        : FloatingActionButton(
-                            heroTag: null,
-                            tooltip: 'Use my location',
-                            backgroundColor: scheme.secondaryContainer,
-                            foregroundColor: scheme.onSecondaryContainer,
-                            onPressed: _useMyLocation,
-                            child: const Icon(Icons.my_location),
-                          ),
+                    child: PointerInterceptor(
+                      child: _picked == null
+                          ? FloatingActionButton.extended(
+                              heroTag: null,
+                              backgroundColor: scheme.secondaryContainer,
+                              foregroundColor: scheme.onSecondaryContainer,
+                              onPressed: _useMyLocation,
+                              icon: const Icon(Icons.my_location),
+                              label: const Text('Use my location'),
+                            )
+                          : FloatingActionButton(
+                              heroTag: null,
+                              tooltip: 'Use my location',
+                              backgroundColor: scheme.secondaryContainer,
+                              foregroundColor: scheme.onSecondaryContainer,
+                              onPressed: _useMyLocation,
+                              child: const Icon(Icons.my_location),
+                            ),
+                    ),
                   ),
               ],
             ),
