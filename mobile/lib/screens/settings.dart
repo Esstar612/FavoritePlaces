@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:favorite_places/config.dart';
 import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/providers/user_settings.dart';
+import 'package:favorite_places/utils/geo.dart';
+import 'package:favorite_places/utils/units.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -55,20 +57,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Future<void> _saveSettings() async {
-    await _update(ref.read(userSettingsProvider));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Settings saved successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final settings = ref.watch(userSettingsProvider);
+    final unit = settings.unitFor(Localizations.localeOf(context));
+    final isGuest = ref.watch(authStateProvider).value?.isAnonymous ?? false;
 
     if (_isLoading) {
       return Scaffold(
@@ -77,6 +71,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
     }
 
+    final muted = TextStyle(fontSize: 14, height: 20 / 14, color: scheme.onSurfaceVariant);
+    Widget heading(String title) => Padding(
+          padding: const EdgeInsets.fromLTRB(4, 20, 4, 12),
+          child: Text(
+            title,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.2, color: scheme.primary),
+          ),
+        );
+    Widget label(String title, String subtitle) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 16, height: 24 / 16)),
+            Text(subtitle, style: muted),
+          ],
+        );
+    Widget card(List<Widget> children, {EdgeInsets padding = const EdgeInsets.all(16)}) => Container(
+          padding: padding,
+          decoration: BoxDecoration(color: scheme.surfaceContainer, borderRadius: BorderRadius.circular(20)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+        );
+    Widget toggle(String title, String subtitle, bool value, ValueChanged<bool> onChanged) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Row(
+            children: [
+              Expanded(child: label(title, subtitle)),
+              const SizedBox(width: 16),
+              Switch(value: value, onChanged: onChanged),
+            ],
+          ),
+        );
+    final divider = Divider(height: 1, color: scheme.outlineVariant);
+    final radiusKm = (settings.defaultRadius / 1000).round();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -84,173 +111,127 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (_isSaving)
             const Padding(
               padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.check),
-              onPressed: _saveSettings,
-              tooltip: 'Save Settings',
+              child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
             ),
         ],
       ),
       body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
-          // ── Map Settings ────────────────────────────────────────────
-          _sectionHeader(context, 'Map Settings'),
-          
-          ListTile(
-            leading: const Icon(Icons.radar),
-            title: const Text('Default Search Radius'),
-            subtitle: Text('${(settings.defaultRadius / 1000).toStringAsFixed(1)} km'),
-            trailing: SizedBox(
-              width: 200,
-              child: Slider(
-                value: settings.defaultRadius.toDouble(),
-                min: 500,
-                max: 10000,
-                divisions: 19,
-                label: '${(settings.defaultRadius / 1000).toStringAsFixed(1)} km',
-                // Persist on release, not on every drag frame.
-                onChanged: (value) => ref
-                    .read(userSettingsProvider.notifier)
-                    .setLocal(settings.copyWith(defaultRadius: value.toInt())),
-                onChangeEnd: (value) =>
-                    _update(settings.copyWith(defaultRadius: value.toInt())),
-              ),
+          heading('Appearance'),
+          card([
+            label('Theme', "System follows your phone's setting"),
+            const SizedBox(height: 14),
+            SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 'light', label: Text('Light')),
+                ButtonSegment(value: 'dark', label: Text('Dark')),
+                ButtonSegment(value: 'system', label: Text('System')),
+              ],
+              selected: {settings.themeMode.name},
+              onSelectionChanged: (value) => _update(settings.copyWith(theme: value.single)),
             ),
-          ),
-
-          const Divider(indent: 16, endIndent: 16),
-
-          // ── Appearance ──────────────────────────────────────────────
-          _sectionHeader(context, 'Appearance'),
-          
-          ListTile(
-            leading: const Icon(Icons.palette_outlined),
-            title: const Text('Theme'),
-            subtitle: Text(settings.theme == 'dark' ? 'Dark Mode' : 'Light Mode'),
-            trailing: Switch(
-              value: settings.theme == 'dark',
-              onChanged: (value) => _update(
-                settings.copyWith(theme: value ? 'dark' : 'light'),
-              ),
-            ),
-          ),
-
-          const Divider(indent: 16, endIndent: 16),
-
-          // ── Notifications ───────────────────────────────────────────
-          _sectionHeader(context, 'Notifications'),
-          
-          SwitchListTile(
-            secondary: const Icon(Icons.email_outlined),
-            title: const Text('Email Notifications'),
-            subtitle: const Text('Receive updates via email'),
-            value: settings.emailNotifications,
-            onChanged: (value) =>
-                _update(settings.copyWith(emailNotifications: value)),
-          ),
-          
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications_outlined),
-            title: const Text('Push Notifications'),
-            subtitle: const Text('Get notified about new features'),
-            value: settings.pushNotifications,
-            onChanged: (value) =>
-                _update(settings.copyWith(pushNotifications: value)),
-          ),
-
-          const Divider(indent: 16, endIndent: 16),
-
-          // ── Privacy ─────────────────────────────────────────────────
-          _sectionHeader(context, 'Privacy & Data'),
-          
-          SwitchListTile(
-            secondary: const Icon(Icons.analytics_outlined),
-            title: const Text('Anonymous Usage Data'),
-            subtitle: const Text('Help improve the app'),
-            value: settings.dataSharing,
-            onChanged: (value) =>
-                _update(settings.copyWith(dataSharing: value)),
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.info_outlined),
-            title: const Text('Privacy Policy'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Open privacy policy
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening privacy policy...')),
-              );
-            },
-          ),
-
-          const Divider(indent: 16, endIndent: 16),
-
-          // ── Account Actions ─────────────────────────────────────────
-          _sectionHeader(context, 'Account'),
-          
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.orange),
-            title: const Text('Sign Out', style: TextStyle(color: Colors.orange)),
-            onTap: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Sign Out'),
-                  content: const Text('Are you sure you want to sign out?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      style: TextButton.styleFrom(foregroundColor: Colors.orange),
-                      child: const Text('Sign Out'),
-                    ),
-                  ],
+          ]),
+          heading('Search'),
+          card([
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: label('Default search radius', 'For place search')),
+                const SizedBox(width: 12),
+                Container(
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: scheme.secondaryContainer, borderRadius: BorderRadius.circular(8)),
+                  child: Text(
+                    formatDistance(settings.defaultRadius, unit),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: scheme.onSecondaryContainer),
+                  ),
                 ),
-              );
-              
-              if (confirmed == true) {
-                await ref.read(authNotifierProvider.notifier).signOut();
-              }
-            },
+              ],
+            ),
+            Slider(
+              value: radiusKm.toDouble(),
+              min: 1,
+              max: 50,
+              divisions: 49,
+              semanticFormatterCallback: (value) => formatDistance(value * 1000, unit),
+              // Persist on release, not on every drag frame.
+              onChanged: (value) => ref
+                  .read(userSettingsProvider.notifier)
+                  .setLocal(settings.copyWith(defaultRadius: value.round() * 1000)),
+              onChangeEnd: (value) => _update(settings.copyWith(defaultRadius: value.round() * 1000)),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(formatDistance(UserSettings.minRadius, unit), style: muted.copyWith(fontSize: 12)),
+                Text(formatDistance(UserSettings.maxRadius, unit), style: muted.copyWith(fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            divider,
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: label('Distance units', 'Used for distances across the app')),
+                const SizedBox(width: 16),
+                SegmentedButton<DistanceUnit>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: DistanceUnit.km, label: Text('km')),
+                    ButtonSegment(value: DistanceUnit.mi, label: Text('mi')),
+                  ],
+                  selected: {unit},
+                  onSelectionChanged: (value) => _update(settings.copyWith(distanceUnit: value.single)),
+                ),
+              ],
+            ),
+          ]),
+          heading('Notifications'),
+          card(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            [
+              toggle('Push notifications', 'Reminders and plan updates on this phone', settings.pushNotifications,
+                  (value) => _update(settings.copyWith(pushNotifications: value))),
+              divider,
+              toggle('Email notifications', 'Account and sync updates', settings.emailNotifications,
+                  (value) => _update(settings.copyWith(emailNotifications: value))),
+            ],
           ),
-          
-          ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text('Delete Account', style: TextStyle(color: Colors.red)),
-            subtitle: const Text('Permanently delete all your data'),
-            onTap: () => _showDeleteAccountDialog(),
-          ),
-
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, top: 24, bottom: 8),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          title.toUpperCase(),
-          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
+          heading('Privacy'),
+          card(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            [
+              toggle('Anonymous usage data', 'Help improve the app', settings.dataSharing,
+                  (value) => _update(settings.copyWith(dataSharing: value))),
+              divider,
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Privacy policy'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Opening privacy policy...')),
+                ),
               ),
-        ),
+            ],
+          ),
+          if (!isGuest) ...[
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                foregroundColor: scheme.error,
+                side: BorderSide(color: scheme.error),
+              ),
+              onPressed: _showDeleteAccountDialog,
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Delete account'),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -320,6 +301,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
 
       // Call backend to delete account
+      final navigator = Navigator.of(context);
       try {
         final token = await user.getIdToken();
         final response = await http.delete(
@@ -334,8 +316,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
 
         if (response.statusCode == 200) {
-          // Account deleted successfully, sign out
           await ref.read(authNotifierProvider.notifier).signOut();
+          navigator.popUntil((route) => route.isFirst);
         } else {
           throw Exception('Failed to delete account');
         }
