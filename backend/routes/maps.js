@@ -33,9 +33,19 @@ router.get('/reverse-geocode', async (req, res) => {
       });
     }
 
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`;
-    const response = await fetch(url);
-    const body = await response.json();
+    const geocode = async (resultType) => {
+      const filter = resultType ? `&result_type=${encodeURIComponent(resultType)}` : '';
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}${filter}&key=${key}`,
+      );
+      return response.json();
+    };
+
+    // Google's first unfiltered result can be a nearby park or landmark rather
+    // than the street the pin is on. A pin inside a park or on a beach has no
+    // street-level result, so it falls back to the unfiltered lookup.
+    let body = await geocode('street_address|premise|route');
+    if (body.status === 'ZERO_RESULTS') body = await geocode();
 
     if (body.status !== 'OK' || !body.results?.length) {
       // Caller falls back to showing coordinates; this isn't an error state.
