@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/utils/password_strength.dart';
@@ -20,6 +22,15 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   bool _obscureConfirm = true;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_refresh);
+    _confirmPasswordController.addListener(_refresh);
+  }
+
+  void _refresh() => setState(() {});
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
@@ -28,195 +39,252 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     super.dispose();
   }
 
+  // AuthGate swaps the screen underneath this pushed route, so it has to go.
+  void _leave() => Navigator.of(context).popUntil((route) => route.isFirst);
+
   Future<void> _signUp() async {
-  // ── local validation ───────────────────────────────────────────────────
-  if (_nameController.text.trim().isEmpty) {
-    _showSnackBar('Please enter your name');
-    return;
-  }
-  if (_emailController.text.trim().isEmpty) {
-    _showSnackBar('Please enter your email');
-    return;
-  }
-  if (!passwordStrength(_passwordController.text.trim()).allowsSignUp) {
-    _showSnackBar('Password must be at least $minPasswordLength characters');
-    return;
-  }
-  if (_passwordController.text != _confirmPasswordController.text) {
-    _showSnackBar('Passwords do not match');
-    return;
+    if (_nameController.text.trim().isEmpty) {
+      _showSnackBar('Please enter your name');
+      return;
+    }
+    if (_emailController.text.trim().isEmpty) {
+      _showSnackBar('Please enter your email');
+      return;
+    }
+    if (!passwordStrength(_passwordController.text.trim()).allowsSignUp) {
+      _showSnackBar('Password must be at least $minPasswordLength characters');
+      return;
+    }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showSnackBar('Passwords do not match');
+      return;
+    }
+
+    await ref.read(authNotifierProvider.notifier).signUpWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          _nameController.text.trim(),
+        );
+
+    if (!mounted) return;
+    if (!ref.read(authNotifierProvider).hasError) _leave();
   }
 
-  await ref.read(authNotifierProvider.notifier).signUpWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-        _nameController.text.trim(),
-      );
-
-  if (!mounted) return;
-
-  // Only leave the screen if the sign-up actually succeeded — popping on an
-  // error (e.g. email-already-in-use) drops the user back on the login screen
-  // as though it had worked.
-  if (!ref.read(authNotifierProvider).hasError) {
-    Navigator.of(context).pop();
+  Future<void> _signUpWithGoogle() async {
+    await ref.read(authNotifierProvider.notifier).signInWithGoogle();
+    if (!mounted) return;
+    if (FirebaseAuth.instance.currentUser != null) _leave();
   }
-}
+
+  void _continueAsGuest() {
+    final auth = ref.read(authNotifierProvider.notifier);
+    _leave();
+    auth.continueAsGuest();
+  }
 
   void _showSnackBar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
-    final isLoading = authState.isLoading;
+    final scheme = Theme.of(context).colorScheme;
+    final isLoading = ref.watch(authNotifierProvider).isLoading;
 
-    // Error listener
     ref.listen<AsyncValue<void>>(authNotifierProvider, (previous, next) {
-      next.whenOrNull(error: (error, _) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(firebaseAuthErrorMessage(error)),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        }
-      });
+      next.whenOrNull(error: (error, _) => _showSnackBar(firebaseAuthErrorMessage(error)));
     });
 
+    final password = _passwordController.text.trim();
+    final strength = passwordStrength(password);
+    final confirm = _confirmPasswordController.text;
+    final mismatch = confirm.isNotEmpty && confirm != _passwordController.text;
+
+    const border = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
+    final help = TextStyle(fontSize: 12, height: 16 / 12, color: scheme.onSurfaceVariant);
+    final link = TextButton.styleFrom(textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500));
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 24),
-
-              // ── Heading ──────────────────────────────────────────────────
-              Text(
-                'Welcome',
-                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              Text(
-                'Create your account to get started',
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── Name ─────────────────────────────────────────────────────
-              TextField(
-                controller: _nameController,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Display Name',
-                  prefixIcon: const Icon(Icons.person_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Email ────────────────────────────────────────────────────
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Password ─────────────────────────────────────────────────
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Confirm Password ─────────────────────────────────────────
-              TextField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirm,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _signUp(),
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                  ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── Sign Up button ───────────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _signUp,
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: isLoading
-                      ? const CircularProgressIndicator(strokeWidth: 2)
-                      : const Text('Create Account', style: TextStyle(fontSize: 16)),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── Back to login ────────────────────────────────────────────
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Back to sign in',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const Text(
+                      'Create your account',
+                      style: TextStyle(fontSize: 28, height: 36 / 28, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 6),
                     Text(
-                      'Already have an account? ',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      'Your places sync across devices, and the AI planner works from your own list.',
+                      style: TextStyle(fontSize: 14, height: 20 / 14, color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.nickname],
+                      decoration: const InputDecoration(
+                        labelText: 'Display name',
+                        helperText: 'Shown on your profile',
+                        border: border,
                       ),
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Sign In'),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.email],
+                      decoration: const InputDecoration(labelText: 'Email', border: border),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.newPassword],
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: border,
+                        suffixIcon: IconButton(
+                          tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                          icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _StrengthMeter(strength: strength),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 0, 0),
+                      child: Text(
+                        password.isEmpty
+                            ? 'At least $minPasswordLength characters.'
+                            : '${strength.label}. At least $minPasswordLength characters.',
+                        style: help,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirm,
+                      textInputAction: TextInputAction.done,
+                      autofillHints: const [AutofillHints.newPassword],
+                      onSubmitted: (_) => isLoading ? null : _signUp(),
+                      decoration: InputDecoration(
+                        labelText: 'Confirm password',
+                        border: border,
+                        errorText: mismatch ? "Passwords don't match yet" : null,
+                        suffixIcon: mismatch
+                            ? Icon(Icons.error, color: scheme.error)
+                            : IconButton(
+                                tooltip: _obscureConfirm ? 'Show password' : 'Hide password',
+                                icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                                onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                      onPressed: isLoading ? null : _signUp,
+                      child: isLoading
+                          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Create account'),
+                    ),
+                    const SizedBox(height: 20),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        foregroundColor: scheme.onSurface,
+                        side: BorderSide(color: scheme.outline),
+                        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                      ),
+                      onPressed: isLoading ? null : _signUpWithGoogle,
+                      icon: SvgPicture.asset('assets/google_g.svg', width: 20, height: 20),
+                      label: const Text('Sign up with Google'),
                     ),
                   ],
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.only(top: 20),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Already have an account?', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+                          TextButton(
+                            style: link,
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Sign in'),
+                          ),
+                        ],
+                      ),
+                      TextButton(
+                        style: link,
+                        onPressed: isLoading ? null : _continueAsGuest,
+                        child: const Text('Just looking? Continue as guest'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StrengthMeter extends StatelessWidget {
+  const _StrengthMeter({required this.strength});
+
+  final PasswordStrength strength;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fill = switch (strength) {
+      PasswordStrength.tooShort || PasswordStrength.weak => scheme.error,
+      PasswordStrength.fair => const Color(0xFFF9C74F),
+      PasswordStrength.good || PasswordStrength.strong => const Color(0xFF9AD1A8),
+    };
+    return Row(
+      children: [
+        for (var i = 0; i < 4; i++) ...[
+          if (i > 0) const SizedBox(width: 4),
+          Expanded(
+            child: Container(
+              height: 4,
+              decoration: BoxDecoration(
+                color: i < strength.segments ? fill : scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
