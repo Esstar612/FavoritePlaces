@@ -1,16 +1,16 @@
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 
-import 'package:favorite_places/config.dart';
 import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/providers/user_places.dart';
-import 'package:favorite_places/services/firestore_service.dart';
+import 'package:favorite_places/screens/auth/signup.dart';
 import 'package:favorite_places/screens/settings.dart';
+import 'package:favorite_places/services/firestore_service.dart';
+import 'package:favorite_places/utils/place_stats.dart';
 import 'package:favorite_places/utils/user_display.dart';
+import 'package:favorite_places/widgets/profile_stats.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -21,46 +21,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isExporting = false;
-  bool _isLoadingStats = false;
-  Map<String, dynamic>? _backendStats;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadBackendStats();
-  }
-
-  // ── load stats from backend ──────────────────────────────────────────────
-  Future<void> _loadBackendStats() async {
-    setState(() => _isLoadingStats = true);
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      final token = await user.getIdToken();
-      final response = await http.get(
-        Uri.parse('${AppConfig.backendUrl}/user/stats'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final stats = jsonDecode(response.body);
-        if (mounted) {
-          setState(() => _backendStats = stats);
-        }
-      }
-    } catch (e) {
-      // Silently fail, show local stats instead
-      debugPrint('Failed to load backend stats: $e');
-    } finally {
-      if (mounted) setState(() => _isLoadingStats = false);
-    }
-  }
-
-  // ── export JSON ──────────────────────────────────────────────────────────
   Future<void> _exportData() async {
     setState(() => _isExporting = true);
     try {
@@ -69,268 +30,304 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         if (obj is DateTime) return obj.toIso8601String();
         return obj.toString();
       });
-
-      // Show the JSON in a dialog so user can copy it
       if (mounted) {
         await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Exported Data'),
-            content: SingleChildScrollView(
-              child: SelectableText(jsonString),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Close'),
-              ),
-            ],
+            title: const Text('Exported data'),
+            content: SingleChildScrollView(child: SelectableText(jsonString)),
+            actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Close'))],
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.red.shade700),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
   }
 
-  // ── sign out ─────────────────────────────────────────────────────────────
-  Future<void> _signOut() async {
+  Future<bool> _confirm(String title, String message, String action) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
+        title: Text(title),
+        content: Text(message),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Sign Out'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(action)),
         ],
       ),
     );
-    if (confirmed == true) {
-      await ref.read(authNotifierProvider.notifier).signOut();
-      // AuthGate will automatically route back to LoginScreen
+    return confirmed == true;
+  }
+
+  // AuthGate swaps the root screen on sign-out, but this pushed route would
+  // otherwise stay on top showing a signed-out profile.
+  Future<void> _leaveAccount() async {
+    final navigator = Navigator.of(context);
+    await ref.read(authNotifierProvider.notifier).signOut();
+    navigator.popUntil((route) => route.isFirst);
+  }
+
+  Future<void> _signOut() async {
+    if (await _confirm('Sign out?', 'Your places stay saved to your account.', 'Sign out')) {
+      await _leaveAccount();
+    }
+  }
+
+  Future<void> _guestSignIn() async {
+    if (await _confirm(
+      'Leave the guest session?',
+      "The sample places, and anything you added as a guest, won't carry over to your account.",
+      'Continue',
+    )) {
+      await _leaveAccount();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final places = ref.watch(userPlacesProvider);
-    final favoriteCount = places.where((p) => p.isFavorite).length;
+    final scheme = Theme.of(context).colorScheme;
+    final user = ref.watch(authStateProvider).value;
+    final isGuest = user?.isAnonymous ?? false;
+    final stats = PlaceStats.of(ref.watch(userPlacesProvider));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 32),
-
-            // ── Avatar + name ──────────────────────────────────────────────
-            CircleAvatar(
-              radius: 48,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Text(
-                avatarInitial(user),
-                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              displayNameOrFallback(user),
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            Text(
-              accountSubtitle(user),
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── Stats row ──────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _statCard(
-                    context, 
-                    '${_backendStats?['totalPlaces'] ?? places.length}', 
-                    'Places'
-                  ),
-                  _statCard(
-                    context, 
-                    '${_backendStats?['favoriteCount'] ?? favoriteCount}', 
-                    'Favorites'
-                  ),
-                  _statCard(
-                    context, 
-                    '${_backendStats?['categoriesUsed'] ?? places.map((p) => p.category).toSet().length}', 
-                    'Categories'
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            const Divider(indent: 24, endIndent: 24),
-
-            // ── Enhanced Stats (from backend) ──────────────────────────
-            // Reserve the space while loading so the section fades in rather
-            // than shoving the rest of the page down when it arrives.
-            if (_backendStats == null && _isLoadingStats) ...[
-              _sectionHeader(context, 'Statistics'),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: isGuest ? scheme.secondaryContainer : scheme.primaryContainer,
+                  foregroundColor: isGuest ? scheme.onSecondaryContainer : scheme.onPrimaryContainer,
+                  child: isGuest
+                      ? const Icon(Icons.person_outline, size: 36)
+                      : Text(avatarInitial(user), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w500)),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayNameOrFallback(user),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 24, height: 32 / 24, fontWeight: FontWeight.w500),
+                      ),
+                      Text(accountSubtitle(user), style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+                    ],
                   ),
                 ),
+              ],
+            ),
+          ),
+          if (isGuest) ...[
+            const SizedBox(height: 8),
+            _GuestCard(
+              places: stats.places,
+              onCreateAccount: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SignUpScreen()),
               ),
-              const Divider(indent: 24, endIndent: 24),
-            ],
-
-            if (_backendStats != null) ...[
-              _sectionHeader(context, 'Statistics'),
-              
-              ListTile(
-                leading: const Icon(Icons.star_outline),
-                title: const Text('Average Rating'),
-                trailing: Text(
-                  _backendStats!['averageRating']?.toString() ?? '0',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              
-              ListTile(
-                leading: const Icon(Icons.notes_outlined),
-                title: const Text('Places with Notes'),
-                trailing: Text(
-                  '${_backendStats!['placesWithNotes'] ?? 0}',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              
-              ListTile(
-                leading: const Icon(Icons.tag_outlined),
-                title: const Text('Unique Tags'),
-                trailing: Text(
-                  '${_backendStats!['totalTags'] ?? 0}',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-
-              const Divider(indent: 24, endIndent: 24),
-            ],
-
-            // ── Settings Section ───────────────────────────────────────────
-            _sectionHeader(context, 'Settings'),
-
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('App Settings'),
-              subtitle: const Text('Theme, notifications, preferences'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              },
+              onSignIn: _guestSignIn,
             ),
-
-            ListTile(
-              leading: const Icon(Icons.download_outlined),
-              title: const Text('Export My Data'),
-              subtitle: const Text('Download all places as JSON'),
-              trailing: _isExporting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.chevron_right),
-              onTap: _isExporting ? null : _exportData,
-            ),
-
-            const Divider(indent: 24, endIndent: 24),
-
-            // ── About Section ──────────────────────────────────────────────
-            _sectionHeader(context, 'About'),
-
-            ListTile(
-              leading: const Icon(Icons.info_outlined),
-              title: const Text('App Version'),
-              trailing: const Text('1.0.0'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.cloud_outlined),
-              title: const Text('Sync Status'),
-              trailing: const Icon(Icons.check_circle, color: Colors.green),
-              subtitle: const Text('Connected to Firebase'),
-            ),
-
-            const Divider(indent: 24, endIndent: 24),
-
-            // ── Danger Zone ────────────────────────────────────────────────
-            _sectionHeader(context, 'Danger Zone'),
-
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Sign Out', style: TextStyle(color: Colors.red)),
-              onTap: _signOut,
-            ),
-
-            const SizedBox(height: 32),
           ],
-        ),
+          const SizedBox(height: 16),
+          ProfileStatsCard(stats: stats),
+          const SizedBox(height: 16),
+          _Section(
+            children: [
+              _Row(
+                icon: Icons.settings_outlined,
+                title: 'App settings',
+                subtitle: 'Theme, search radius, notifications',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                ),
+              ),
+              _Row(
+                icon: Icons.download_outlined,
+                title: 'Export my data',
+                subtitle: 'Download all ${stats.places} places as JSON',
+                trailing: _isExporting
+                    ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : null,
+                onTap: _isExporting ? null : _exportData,
+              ),
+              _Row(
+                icon: Icons.cloud_outlined,
+                title: 'Sync',
+                subtitleWidget: isGuest
+                    ? null
+                    : Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(color: Color(0xFF7DD99A), shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text('Connected to Firebase'),
+                        ],
+                      ),
+                subtitle: isGuest ? 'Sample places, saved to this guest session' : null,
+              ),
+              _Row(
+                icon: Icons.info_outline,
+                title: 'App version',
+                trailing: Text('1.0.0', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+              ),
+            ],
+          ),
+          if (!isGuest) ...[
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                side: BorderSide(color: scheme.outline),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              onPressed: _signOut,
+              icon: const Icon(Icons.logout),
+              label: const Text('Sign out'),
+            ),
+          ],
+        ],
       ),
     );
   }
+}
 
-  // ── helpers ──────────────────────────────────────────────────────────────
-  Widget _statCard(BuildContext context, String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                fontWeight: FontWeight.bold,
+class _GuestCard extends StatelessWidget {
+  const _GuestCard({required this.places, required this.onCreateAccount, required this.onSignIn});
+
+  final int places;
+  final VoidCallback onCreateAccount;
+  final VoidCallback onSignIn;
+
+  static const _background = Color(0xFF3E2B33);
+  static const _text = Color(0xFFFFD9E3);
+  static const _accent = Color(0xFFF0B8C9);
+  static const _onAccent = Color(0xFF492532);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: _background, borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.info_outline, color: _accent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'These $places San Francisco spots are samples, so you can try every feature. '
+                  'Sign in to start your own list and keep it in sync.',
+                  style: const TextStyle(fontSize: 15, height: 22 / 15, color: _text),
+                ),
               ),
-        ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: _accent),
+                onPressed: onCreateAccount,
+                child: const Text('Create account'),
               ),
-        ),
-      ],
+              const SizedBox(width: 8),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: _accent, foregroundColor: _onAccent),
+                onPressed: onSignIn,
+                child: const Text('Sign in'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Widget _sectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 24, top: 16, bottom: 4),
-      child: Text(
-        title.toUpperCase(),
-        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
+class _Section extends StatelessWidget {
+  const _Section({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(children: children),
+      ),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.subtitleWidget,
+    this.trailing,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget? subtitleWidget;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final sub = subtitleWidget ?? (subtitle == null ? null : Text(subtitle!));
+    return InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 64),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+          child: Row(
+            children: [
+              Icon(icon, color: muted),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 16, height: 24 / 16)),
+                    if (sub != null)
+                      DefaultTextStyle.merge(style: TextStyle(fontSize: 14, height: 20 / 14, color: muted), child: sub),
+                  ],
+                ),
+              ),
+              ?trailing,
+              if (trailing == null && onTap != null) Icon(Icons.chevron_right, color: muted),
+            ],
+          ),
+        ),
       ),
     );
   }
