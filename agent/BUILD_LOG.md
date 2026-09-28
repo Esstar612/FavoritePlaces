@@ -1009,3 +1009,134 @@ Vague requests get a question, not a guess: each model reports its confidence, t
 - Identify GPT's needless question in Run B.
 - A live test that forces the fallback on each provider.
 - Anthropic identity federation instead of an API key.
+
+---
+
+## 2026-09-28: Step 5, the Plan screen
+
+### What we built
+- **Agent API changes the Plan screen needed** (#33 to #36, merged as one stack for one paid eval run):
+  - **CORS:** `CORSMiddleware` allows the two Hosting origins (`CORS_ORIGINS`) and localhost on any port (`CORS_ORIGIN_REGEX`), with `GET` and `POST`, the `Authorization` and `Content-Type` headers, and no credentials.
+  - **What each tool call found:** `ToolCall.result_place_ids` (the rows `search_places` returned, the places `get_place_details` found, or `plan_route`'s order) and `matched` (`search_places`' total). Only IDs come back; the app looks up names and notes locally, and the Cloud Run logs stay IDs only.
+  - **Walking legs:** `legs` on `itinerary` answers, one per pair of consecutive stops, with `walk_minutes`, or `null` over 30 minutes. `_haversine_km` moved to `places/geo.py` as `haversine_km`, shared with `plan_route`.
+  - **A start place:** an optional `start_place_id`, which must be one of the caller's own places (a foreign or unknown ID gets a 422). The start place becomes stop 1. A request that's only a start place never asks a question. Without a start place, the model's input is unchanged.
+- **The Plan screen in the Flutter app** (#37 to #45):
+  - a bottom bar with Places, Plan and Favorites
+  - `AgentService` calling `/recommend`, and a plan notifier with one clarification round
+  - the compose, thinking, question, nothing-fits, error and results states
+  - results with a static route map, numbered stops, each stop's reason, and the walking legs
+  - "How I got this", listing every tool call with what it found
+- **An eval case set, `start_place`** (3 cases), run on request. It isn't in the CI gate.
+
+### Decisions made
+- **Walking times, not distances, so no units setting.** A real transit time would need a routing API, left for later; a leg over 30 minutes shows "Transit or a ride" with no number.
+- **The walking estimate is straight-line distance x 1.3, at 4.8 km/h, capped at 30 minutes.** All three are product choices, not measurements, and the app labels the times "about".
+- **Legs follow the final recommended order,** computed on the server, not the model's own `plan_route` call, which may be missing or in a different order.
+- **Tool results come back as IDs, not text,** so no titles or notes reach the logs.
+- **The "Thinking" steps are a timed animation in the app,** because `/recommend` isn't streamed.
+- **"Skip and surprise me" sends "Surprise me" as the one clarification answer,** so it needs no API change.
+- **A start-only request never escalates.** GPT drafted a plan for it, then reported confidence under its threshold and asked a question.
+
+### Numbers measured
+- **The stack's merge run** (CI run 36360813263, `gh run view 36360813263 --log`), both providers, 96 runs each, all gates and thresholds passed:
+
+  | Scorer | Claude (`outing-agent-main-anthropic-23a90ead`) | GPT (`outing-agent-main-openai-5d4446b5`) |
+  |---|---|---|
+  | `grounded` (gate) | 1.000 | 1.000 |
+  | `no_forbidden` (gate) | 1.000 | 1.000 |
+  | `covers_request` | 1.000 | 1.000 |
+  | `details_before_recommending` | 0.971 | 1.000 |
+  | `empty_when_nothing_fits` | 1.000 | 1.000 |
+  | `expected_recall` | 0.955 | 1.000 |
+  | `required_tools_used` | 0.963 | 1.000 |
+  | `respects_sequence` | 1.000 | 1.000 |
+  | `route_when_multi_stop` | 0.929 | 1.000 |
+  | `tool_call_budget` | 0.990 | 0.979 |
+  | `fallback_rate` (report only) | 0.031 | 0.000 |
+  | `asks_when_vague` (report only) | 1.000 | 1.000 |
+  | `no_needless_question` (report only) | 1.000 | 1.000 |
+
+- **`start_place` cases** (`run_evals --cases start_place`, 18 runs, from #36): every gate passed, and Claude scored 1.000 on every scorer. GPT's 3 misses were all on `start-alone`, which led to the start-only rule. After the fix, a `start-alone` re-measure (6 runs) gave `expected_recall` 1.000 for both providers. `no_needless_question` is 1.000 by construction on `start-alone` and `start-with-clarification`, since escalation is off for both, so these runs aren't calibration evidence.
+- **CORS preflight against production** (`curl -si -X OPTIONS .../recommend` with the Hosting origin): `HTTP/2 200`, `access-control-allow-origin: https://favorite-places-app-94adb.web.app`, `access-control-allow-methods: GET, POST`.
+- **Live check on the hosted app** (2026-09-28, an existing guest session with the 5 sample places): "Coffee by the water, then some art" returned Blue Bottle Coffee then SFMOMA, "Walk about 21 min" between them, a route map, and "How I got this" with 5 tool calls, each showing what it found ("No matches", "1 match: SFMOMA", "1 match: Blue Bottle Coffee"). The answer took just under a minute; it wasn't timed, so there's no latency figure.
+
+### Problems hit and how we solved them
+- **The agent had no CORS,** so the browser would have blocked every call from the Hosting domain. Fixed in #33 before any Flutter code called it.
+- **GPT asked a question on a start-only request** after drafting a plan. A start-only request now skips escalation, with its own note to the model.
+
+### Resume claims moved forward
+- **1 (provider-agnostic tool-calling agent):** the agent is now used from the app's Plan screen, including by guests, and every answer shows the tool calls behind it.
+- **3 (evals in CI before deploy):** the stack's merge ran the full gate on both providers before deploying.
+
+### Case study
+Recruiters using the guest login can ask the Plan tab for an outing and see the agent's stops, walking times and every tool call it made, all drawn from their own saved places.
+
+---
+
+## 2026-09-28: Step 5 follow-up, prompt caching on Claude requests
+
+### What we built
+- The Anthropic chat model sends a top-level `cache_control: {"type": "ephemeral"}` (#86). The API places the cache breakpoint on the request's last cacheable block and moves it forward as the conversation grows, so each agent-loop call reads the previous call's prefix from cache.
+- OpenAI is unchanged; it caches automatically.
+- A test checks the request payload carries `cache_control`, with no network call.
+
+### Decisions made
+- **Automatic caching rather than one breakpoint on the system prompt.** The system prompt and three tool definitions alone looked likely to fall under Sonnet 5's 1,024-token caching minimum; the saving is in the growing conversation and its tool results.
+- **The finalize call binds a different tool,** so it isn't expected to read the agent loop's cache.
+- **Pricing,** per Anthropic's prompt-caching page for Sonnet 5: 5-minute cache writes cost 1.25x base input, and reads 0.1x.
+
+### Numbers measured
+- **The merge run** (CI run 36421686082, `gh run view 36421686082 --log`), all gates and thresholds passed:
+
+  | Scorer | Claude, Step 5 run (23a90ead) | Claude, this run (79232ce8) | GPT, this run (9c541271) |
+  |---|---|---|---|
+  | `grounded` (gate) | 1.000 | 1.000 | 1.000 |
+  | `no_forbidden` (gate) | 1.000 | 1.000 | 1.000 |
+  | `covers_request` | 1.000 | 1.000 | 1.000 |
+  | `details_before_recommending` | 0.971 | 0.986 | 1.000 |
+  | `empty_when_nothing_fits` | 1.000 | 0.917 | 1.000 |
+  | `expected_recall` | 0.955 | 0.902 | 0.985 |
+  | `required_tools_used` | 0.963 | 0.938 | 1.000 |
+  | `respects_sequence` | 1.000 | 1.000 | 1.000 |
+  | `route_when_multi_stop` | 0.929 | 0.881 | 1.000 |
+  | `tool_call_budget` | 0.990 | 1.000 | 0.958 |
+  | `fallback_rate` (report only) | 0.031 | 0.042 | 0.000 |
+  | `asks_when_vague` (report only) | 1.000 | 1.000 | 1.000 |
+  | `no_needless_question` (report only) | 1.000 | 0.964 | 1.000 |
+
+- **Cache reads in one trace** (LangSmith, experiment `outing-agent-main-anthropic-79232ce8`, row 1, repetition 1, "An evening out: browse for books first, then dinner, then cocktails"):
+
+  | Claude call | Input tokens | Cache read | Cache write | Output tokens | Cost |
+  |---|---|---|---|---|---|
+  | 1st | 1,557 | 0 | 1,555 | 191 | $0.0058 |
+  | 2nd | 2,232 | 1,555 | 675 | 105 | $0.0031 |
+  | 3rd | 2,980 | 2,230 | 748 | 606 | $0.0084 |
+
+- **Experiment totals, Claude, 96 runs each** (LangSmith dataset `outing-agent-v1`, Cost chart):
+
+  | | #29, Step 5 run, no caching | #31, this run |
+  |---|---|---|
+  | Input tokens | 1.093M | 1.068M |
+  | Input cost | $2.19 | $1.34 |
+  | Output tokens | 102.2K | 101.1K |
+  | Output cost | $1.02 | $1.01 |
+  | Total cost | $3.21 | $2.35 |
+
+### Observations
+- **Caching works across agent turns.** Each call reads back what the one before it wrote (1,555 tokens, then 1,555 + 675 = 2,230). The first call's cached prefix was 1,555 tokens, above the 1,024 minimum.
+- **Input cost fell from $2.19 to $1.34 (about 39%) on almost the same input tokens,** and total cost from $3.21 to $2.35 (about 27%). Output cost didn't change. The costs are LangSmith's own pricing of the traced tokens, and this is one run on each side.
+- **Several Claude scores were lower in this run than in the Step 5 run** (`expected_recall` 0.955 to 0.902, `route_when_multi_stop` 0.929 to 0.881, one missed `empty_when_nothing_fits` case), while `details_before_recommending` and `tool_call_budget` rose. Caching doesn't change what the model sees, and GPT, which this change didn't touch, also moved (`expected_recall` 1.000 to 0.985). Two runs can't separate run-to-run variance from a real change; every threshold still passed.
+
+### Problems hit and how we solved them
+- **Anthropic reported a low prompt-cache hit rate** on this project's API traffic, which is the outing agent. That prompted this change.
+- **Production has `LANGSMITH_TRACING=false`,** so a live `/recommend` call leaves no trace. The cache reads were measured on the CI eval run's traces instead.
+
+### Resume claims moved forward
+- **1:** the agent's Claude requests now reuse cached prompt prefixes across tool-calling turns, cutting input cost in the eval suite.
+
+### Case study
+Turning on Anthropic's automatic prompt caching cut the eval suite's Claude input cost from $2.19 to $1.34 on the same 96 runs, with every quality gate still passing.
+
+### Later
+- Repeat the eval run to see whether the lower Claude scores are variance.
+- Measure caching on production traffic, which would need tracing or usage logging in Cloud Run.
