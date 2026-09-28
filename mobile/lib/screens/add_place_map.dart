@@ -12,18 +12,27 @@ import 'package:favorite_places/utils/device_location.dart';
 import 'package:favorite_places/utils/geo.dart';
 import 'package:favorite_places/utils/map_markers.dart';
 import 'package:favorite_places/utils/map_style.dart';
+import 'package:favorite_places/widgets/add_place/place_sheet.dart';
 
 const _fallbackCamera = CameraPosition(target: LatLng(39.83, -98.58), zoom: 3);
 const _placeZoom = 16.0;
 
 class PickedPlace {
-  const PickedPlace({required this.position, this.name, this.details});
+  const PickedPlace({
+    required this.position,
+    this.name,
+    this.details,
+    this.pinPosition,
+    this.lookingUp = false,
+    this.declined = false,
+  });
 
   final LatLng position;
   final String? name;
   final PlaceDetailsResult? details;
-
-  bool get isDroppedPin => details == null;
+  final LatLng? pinPosition;
+  final bool lookingUp;
+  final bool declined;
 }
 
 class AddPlaceMapScreen extends ConsumerStatefulWidget {
@@ -46,6 +55,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
   List<PlaceSuggestion> _suggestions = const [];
   bool _searching = false;
   bool _pinHint = false;
+  int _lookup = 0;
   BitmapDescriptor? _savedIcon;
 
   @override
@@ -134,6 +144,7 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
       final details = await _search.details(suggestion.placeId);
       if (!mounted) return;
       final position = LatLng(details.latitude, details.longitude);
+      _lookup++;
       setState(() => _picked = PickedPlace(position: position, name: suggestion.primaryText, details: details));
       _moveTo(position);
     } catch (_) {
@@ -141,13 +152,36 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
     }
   }
 
-  void _dropPin(LatLng position) {
+  Future<void> _dropPin(LatLng position) async {
     _queryFocus.unfocus();
+    final lookup = ++_lookup;
     setState(() {
-      _picked = PickedPlace(position: position);
+      _picked = PickedPlace(position: position, lookingUp: true);
       _pinHint = false;
       _suggestions = const [];
     });
+    ({String name, PlaceDetailsResult details})? found;
+    try {
+      found = await _search.nearby(position.latitude, position.longitude);
+    } catch (_) {}
+    if (!mounted || lookup != _lookup) return;
+    setState(() {
+      _picked = found == null
+          ? PickedPlace(position: position)
+          : PickedPlace(
+              position: LatLng(found.details.latitude, found.details.longitude),
+              name: found.name,
+              details: found.details,
+              pinPosition: position,
+            );
+    });
+  }
+
+  void _nameItYourself() {
+    final pin = _picked?.pinPosition;
+    if (pin == null) return;
+    _lookup++;
+    setState(() => _picked = PickedPlace(position: pin, declined: true));
   }
 
   Future<void> _useMyLocation() async {
@@ -159,11 +193,12 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
       return;
     }
     setState(() => _self = here);
-    _dropPin(here);
     _moveTo(here);
+    await _dropPin(here);
   }
 
   void _clear() {
+    _lookup++;
     _query.clear();
     setState(() {
       _picked = null;
@@ -195,94 +230,150 @@ class _AddPlaceMapScreenState extends ConsumerState<AddPlaceMapScreen> {
     final searching = _queryFocus.hasFocus;
 
     return Scaffold(
-      body: Stack(
+      body: Column(
         children: [
-          GoogleMap(
-            initialCameraPosition: _initialCamera(),
-            style: darkMapStyle,
-            markers: _markers(saved),
-            circles: selfLocationCircles(_self),
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            onTap: _dropPin,
-            onMapCreated: (controller) {
-              _controller = controller;
-              if (_pendingCamera case final update?) controller.animateCamera(update);
-              _pendingCamera = null;
-            },
-          ),
-          Positioned.fill(
-            child: IgnorePointer(
-              ignoring: !searching,
-              child: GestureDetector(
-                onTap: _queryFocus.unfocus,
-                child: AnimatedOpacity(
-                  opacity: searching ? 1 : 0,
-                  duration: const Duration(milliseconds: 150),
-                  child: const ColoredBox(color: Color(0x8C0C0A10)),
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          Expanded(
+            child: Stack(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _SearchPanel(
-                    controller: _query,
-                    focusNode: _queryFocus,
-                    open: searching,
-                    loading: _searching,
-                    suggestions: _suggestions,
-                    onChanged: _onQueryChanged,
-                    onClear: _clear,
-                    onChoose: _choose,
-                    onUseMyLocation: _useMyLocation,
-                    onDropPin: () {
-                      _queryFocus.unfocus();
-                      setState(() => _pinHint = true);
-                    },
-                  ),
+                GoogleMap(
+                  initialCameraPosition: _initialCamera(),
+                  style: darkMapStyle,
+                  markers: _markers(saved),
+                  circles: selfLocationCircles(_self),
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  onTap: _dropPin,
+                  onMapCreated: (controller) {
+                    _controller = controller;
+                    if (_pendingCamera case final update?) controller.animateCamera(update);
+                    _pendingCamera = null;
+                  },
                 ),
-                if (!searching && _picked == null) ...[
-                  const SizedBox(height: 12),
-                  Center(
-                    child: _Hint(
-                      text: _pinHint ? 'Tap the map to drop a pin' : 'Or tap the map to drop a pin',
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: !searching,
+                    child: GestureDetector(
+                      onTap: _queryFocus.unfocus,
+                      child: AnimatedOpacity(
+                        opacity: searching ? 1 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        child: const ColoredBox(color: Color(0x8C0C0A10)),
+                      ),
                     ),
                   ),
-                ],
+                ),
+                SafeArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: _SearchPanel(
+                          controller: _query,
+                          focusNode: _queryFocus,
+                          open: searching,
+                          loading: _searching,
+                          suggestions: _suggestions,
+                          onChanged: _onQueryChanged,
+                          onClear: _clear,
+                          onChoose: _choose,
+                          onUseMyLocation: _useMyLocation,
+                          onDropPin: () {
+                            _queryFocus.unfocus();
+                            setState(() => _pinHint = true);
+                          },
+                        ),
+                      ),
+                      if (!searching && _picked == null) ...[
+                        const SizedBox(height: 12),
+                        Center(
+                          child: _Hint(
+                            text: _pinHint ? 'Tap the map to drop a pin' : 'Or tap the map to drop a pin',
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (!searching && saved.isNotEmpty && _picked == null)
+                  Positioned(left: 16, bottom: 40, child: _Legend(color: scheme.primary)),
+                if (!searching)
+                  Positioned(
+                    right: 16,
+                    bottom: _picked == null ? 32 : 16,
+                    child: _picked == null
+                        ? FloatingActionButton.extended(
+                            heroTag: null,
+                            backgroundColor: scheme.secondaryContainer,
+                            foregroundColor: scheme.onSecondaryContainer,
+                            onPressed: _useMyLocation,
+                            icon: const Icon(Icons.my_location),
+                            label: const Text('Use my location'),
+                          )
+                        : FloatingActionButton(
+                            heroTag: null,
+                            tooltip: 'Use my location',
+                            backgroundColor: scheme.secondaryContainer,
+                            foregroundColor: scheme.onSecondaryContainer,
+                            onPressed: _useMyLocation,
+                            child: const Icon(Icons.my_location),
+                          ),
+                  ),
               ],
             ),
           ),
-          if (!searching && saved.isNotEmpty)
-            Positioned(left: 16, bottom: 40, child: _Legend(color: scheme.primary)),
-          if (!searching)
-            Positioned(
-              right: 16,
-              bottom: 32,
-              child: _picked == null
-                  ? FloatingActionButton.extended(
-                      heroTag: null,
-                      backgroundColor: scheme.secondaryContainer,
-                      foregroundColor: scheme.onSecondaryContainer,
-                      onPressed: _useMyLocation,
-                      icon: const Icon(Icons.my_location),
-                      label: const Text('Use my location'),
-                    )
-                  : FloatingActionButton(
-                      heroTag: null,
-                      tooltip: 'Use my location',
-                      backgroundColor: scheme.secondaryContainer,
-                      foregroundColor: scheme.onSecondaryContainer,
-                      onPressed: _useMyLocation,
-                      child: const Icon(Icons.my_location),
-                    ),
-            ),
+          // Below the map rather than over it: Google's logo and terms must stay
+          // visible, and the web map can't move them out from under an overlay.
+          if (_picked case final picked? when !searching) _SheetPanel(picked: picked, onNameItYourself: _nameItYourself),
         ],
+      ),
+    );
+  }
+}
+
+class _SheetPanel extends StatelessWidget {
+  const _SheetPanel({required this.picked, required this.onNameItYourself});
+
+  final PickedPlace picked;
+  final VoidCallback onNameItYourself;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainer,
+      elevation: 8,
+      shadowColor: Colors.black,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.paddingOf(context).bottom),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(color: scheme.outline, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              PlaceSheet(
+                key: ValueKey(picked),
+                latitude: picked.position.latitude,
+                longitude: picked.position.longitude,
+                name: picked.name,
+                details: picked.details,
+                lookingUp: picked.lookingUp,
+                declined: picked.declined,
+                onNameItYourself: picked.pinPosition == null ? null : onNameItYourself,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
