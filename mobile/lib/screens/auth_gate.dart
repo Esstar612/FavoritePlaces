@@ -22,19 +22,21 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
 
-    // Side-effect: start/stop the Firestore stream when auth changes
+    // userChanges also fires on profile updates (display name), so the places stream
+    // and settings only restart when the uid actually changes.
     ref.listen(authStateProvider, (previous, next) {
-      next.whenOrNull(data: (user) {
-        if (user != null) {
-          ref.read(userPlacesProvider.notifier).startListening();
-          // Fire-and-forget: the theme swaps in when it arrives. load() is
-          // guarded against overlapping calls.
-          ref.read(userSettingsProvider.notifier).load();
-        } else {
-          ref.read(userPlacesProvider.notifier).stopListening();
-          ref.read(userSettingsProvider.notifier).reset();
-        }
-      });
+      final before = previous?.valueOrNull?.uid;
+      final after = next.valueOrNull?.uid;
+      if (before == after) return;
+      if (after != null) {
+        ref.read(userPlacesProvider.notifier).startListening();
+        // Fire-and-forget: the theme swaps in when it arrives. load() is
+        // guarded against overlapping calls.
+        ref.read(userSettingsProvider.notifier).load();
+      } else {
+        ref.read(userPlacesProvider.notifier).stopListening();
+        ref.read(userSettingsProvider.notifier).reset();
+      }
     });
 
     return authState.when(

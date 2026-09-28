@@ -155,6 +155,21 @@ class FirestoreService {
   }
 
   // ── EXPORT (one-shot fetch of all user data) ────────────────────────────
+  static Future<int> deleteSamplePlaces({FirebaseFirestore? db, String? uid}) async {
+    final store = db ?? FirebaseFirestore.instance;
+    final snap = await store
+        .collection('places')
+        .where('userId', isEqualTo: uid ?? _uid)
+        .where('isSample', isEqualTo: true)
+        .get();
+    final batch = store.batch();
+    for (final doc in snap.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+    return snap.docs.length;
+  }
+
   static Future<List<Map<String, dynamic>>> exportAllPlaces() async {
     final snap = await _places.where('userId', isEqualTo: _uid).get();
     return snap.docs.map((doc) {

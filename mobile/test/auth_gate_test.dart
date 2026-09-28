@@ -9,7 +9,10 @@ import 'package:favorite_places/providers/user_settings.dart';
 import 'package:favorite_places/screens/auth/guest_loading.dart';
 import 'package:favorite_places/screens/auth_gate.dart';
 
-class _FakeUser extends Fake implements User {}
+class _FakeUser extends Fake implements User {
+  @override
+  String get uid => 'uid';
+}
 
 class _FakePlaces extends UserPlacesNotifier {
   @override
