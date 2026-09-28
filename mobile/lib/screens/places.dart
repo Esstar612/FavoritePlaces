@@ -7,6 +7,7 @@ import 'package:favorite_places/widgets/places_list.dart';
 import 'package:favorite_places/providers/auth_provider.dart';
 import 'package:favorite_places/services/ai_service.dart';
 import 'package:favorite_places/utils/user_display.dart';
+import 'package:favorite_places/widgets/favorites_empty.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -288,67 +289,68 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
         child: Column(
           children: [
             // Search Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search or ask, like "quiet to work"',
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(left: 16, right: 12),
-                    child: Icon(Icons.search, color: answering ? scheme.primary : null),
+            if (!widget.favoritesOnly)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search or ask, like "quiet to work"',
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 12),
+                      child: Icon(Icons.search, color: answering ? scheme.primary : null),
+                    ),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchQuery.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            tooltip: 'Clear search',
+                            onPressed: _clearSearch,
+                          ),
+                        if (!answering)
+                          IconButton(
+                            icon: _aiSearching
+                                ? const SizedBox(
+                                    width: 18, height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.primary),
+                            tooltip: 'Ask AI',
+                            onPressed: (_aiSearching || _searchQuery.trim().isEmpty)
+                                ? null
+                                : _runAiSearch,
+                          ),
+                      ],
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: answering ? BorderSide(color: scheme.primary, width: 2) : BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide(color: scheme.primary, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 18),
                   ),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_searchQuery.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear),
-                          tooltip: 'Clear search',
-                          onPressed: _clearSearch,
-                        ),
-                      if (!answering)
-                        IconButton(
-                          icon: _aiSearching
-                              ? const SizedBox(
-                                  width: 18, height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.primary),
-                          tooltip: 'Ask AI',
-                          onPressed: (_aiSearching || _searchQuery.trim().isEmpty)
-                              ? null
-                              : _runAiSearch,
-                        ),
-                    ],
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(28),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(28),
-                    borderSide: answering ? BorderSide(color: scheme.primary, width: 2) : BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(28),
-                    borderSide: BorderSide(color: scheme.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _runAiSearch(),
+                  onChanged: (value) {
+                    // A new query invalidates the previous AI result.
+                    _clearAiSearch();
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
                 ),
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) => _runAiSearch(),
-                onChanged: (value) {
-                  // A new query invalidates the previous AI result.
-                  _clearAiSearch();
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
               ),
-            ),
 
             if (answering)
               Padding(
@@ -363,18 +365,21 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
               ),
 
             if (scoped.isNotEmpty && !answering) ...[
-              _CategoryChips(
-                places: scoped,
-                selected: _filterCategory,
-                onSelected: (category) => setState(() => _filterCategory = category),
-              ),
+              if (!widget.favoritesOnly)
+                _CategoryChips(
+                  places: scoped,
+                  selected: _filterCategory,
+                  onSelected: (category) => setState(() => _filterCategory = category),
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 8, 4),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        '${filteredPlaces.length} ${filteredPlaces.length == 1 ? 'place' : 'places'}',
+                        widget.favoritesOnly
+                            ? '${filteredPlaces.length} ${filteredPlaces.length == 1 ? 'place' : 'places'} you love'
+                            : '${filteredPlaces.length} ${filteredPlaces.length == 1 ? 'place' : 'places'}',
                         style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),
@@ -395,11 +400,13 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                 builder: (context, snapshot) =>
                     snapshot.connectionState == ConnectionState.waiting
                         ? const Center(child: CircularProgressIndicator())
-                        : PlacesList(
-                            places: filteredPlaces,
-                            evidenceQuery: answering ? _searchController.text : null,
-                            groupByCategory: _sortOption == SortOption.category,
-                          ),
+                        : widget.favoritesOnly && scoped.isEmpty
+                            ? FavoritesEmpty(places: allPlaces)
+                            : PlacesList(
+                                places: filteredPlaces,
+                                evidenceQuery: answering ? _searchController.text : null,
+                                groupByCategory: _sortOption == SortOption.category,
+                              ),
               ),
             ),
           ],
