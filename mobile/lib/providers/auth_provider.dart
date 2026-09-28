@@ -15,8 +15,6 @@ final authStateProvider = StreamProvider<User?>((ref) {
 
 final guestSeedingProvider = StateProvider<bool>((ref) => false);
 
-// google_sign_in 7 must be initialized exactly once before any other call; a
-// top-level final runs this on first use and never again.
 final Future<void> _googleSignInReady = GoogleSignIn.instance.initialize();
 
 // ─── Notifier: exposes sign-in / sign-up / sign-out actions ─────────────────

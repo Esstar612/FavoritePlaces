@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-// Colours the designs use that Material 3 has no role for.
 extension Palette on ColorScheme {
   bool get _isLight => brightness == Brightness.light;
 
-  // Light cards are white and lifted by a shadow; dark cards are a tone above the page.
   Color get card => _isLight ? surfaceContainerLowest : surfaceContainer;
 
   List<BoxShadow> get cardShadow => _isLight
@@ -28,10 +26,9 @@ extension Palette on ColorScheme {
       ? (const Color(0xFFFFD8E4), const Color(0xFF31111D))
       : (const Color(0xFF3E2B33), const Color(0xFFFFD9E3));
 
-  // Background, text, then icon and action.
-  (Color, Color, Color) get savedBanner => _isLight
-      ? (const Color(0xFFFFD8E4), const Color(0xFF31111D), const Color(0xFF7D5260))
-      : (const Color(0xFF633B48), const Color(0xFFFFD9E3), const Color(0xFFF0B8C9));
+  ({Color background, Color text, Color accent}) get savedBanner => _isLight
+      ? (background: const Color(0xFFFFD8E4), text: const Color(0xFF31111D), accent: const Color(0xFF7D5260))
+      : (background: const Color(0xFF633B48), text: const Color(0xFFFFD9E3), accent: const Color(0xFFF0B8C9));
 
   (Color, Color) get pinkAction => _isLight
       ? (const Color(0xFF7D5260), const Color(0xFFFFFFFF))
