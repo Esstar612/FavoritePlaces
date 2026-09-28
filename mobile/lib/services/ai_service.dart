@@ -100,7 +100,7 @@ class AIService {
       url,
       headers: headers,
       body: jsonEncode({
-        if (photoUrl != null) 'photoUrl': photoUrl,
+        'photoUrl': ?photoUrl,
         'title': title,
         'category': category,
       }),

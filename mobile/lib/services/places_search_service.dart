@@ -84,7 +84,7 @@ class PlacesSearchService {
       body: jsonEncode({
         'input': input,
         'sessionToken': _sessionToken,
-        if (center != null) 'origin': center,
+        'origin': ?center,
         if (center != null && radiusMeters != null)
           'locationBias': {
             'circle': {

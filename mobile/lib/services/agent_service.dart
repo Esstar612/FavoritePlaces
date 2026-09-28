@@ -185,7 +185,7 @@ class AgentService implements PlanAgent {
             body: jsonEncode({
               if (message != null) 'message': clipForAgent(message),
               if (clarification != null) 'clarification': clarification.toJson(),
-              if (startPlaceId != null) 'start_place_id': startPlaceId,
+              'start_place_id': ?startPlaceId,
             }),
           )
           .timeout(const Duration(seconds: 120));
