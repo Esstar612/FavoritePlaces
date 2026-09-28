@@ -178,6 +178,26 @@ void main() {
     expect(idle.startPlaceId, 'p1');
   });
 
+  test('compose opens an idle plan with a draft and a start place', () {
+    final notifier = PlanNotifier(FakeAgent([]));
+
+    notifier.compose('  somewhere quiet to work ', startPlaceId: 'p1');
+
+    final idle = notifier.state as PlanIdle;
+    expect(idle.draft, 'somewhere quiet to work');
+    expect(idle.startPlaceId, 'p1');
+  });
+
+  test('compose drops a response still in flight', () async {
+    final notifier = PlanNotifier(FakeAgent([_result(stops: ['a'])]));
+
+    final pending = notifier.submit('coffee');
+    notifier.compose('art');
+    await pending;
+
+    expect((notifier.state as PlanIdle).draft, 'art');
+  });
+
   test('quick answers are the most common categories and tags', () {
     Place place(PlaceCategory category, List<String> tags) =>
         Place(title: 't', category: category, tags: tags, location: const PlaceLocation(latitude: 0, longitude: 0, address: ''));

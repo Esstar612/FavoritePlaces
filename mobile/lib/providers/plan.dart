@@ -66,10 +66,12 @@ class PlanNotifier extends StateNotifier<PlanState> {
   final PlanAgent _agent;
   int _generation = 0;
 
-  void startFrom(String? placeId) {
+  void compose(String draft, {String? startPlaceId}) {
     _generation++;
-    state = PlanIdle(startPlaceId: placeId);
+    state = PlanIdle(startPlaceId: startPlaceId, draft: clipForAgent(draft.trim()));
   }
+
+  void startFrom(String? placeId) => compose('', startPlaceId: placeId);
 
   void reset() => startFrom(null);
 

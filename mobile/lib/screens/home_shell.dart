@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:favorite_places/providers/home_tab.dart';
+import 'package:favorite_places/providers/plan.dart';
 import 'package:favorite_places/screens/places.dart';
 import 'package:favorite_places/screens/plan.dart';
 
-class HomeShell extends StatefulWidget {
+void openPlan(BuildContext context, WidgetRef ref, {String draft = '', String? startPlaceId}) {
+  ref.read(planProvider.notifier).compose(draft, startPlaceId: startPlaceId);
+  ref.read(homeTabProvider.notifier).state = HomeTab.plan;
+  Navigator.of(context).popUntil((route) => route.isFirst);
+}
+
+class HomeShell extends ConsumerWidget {
   const HomeShell({super.key});
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends State<HomeShell> {
-  int _tab = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tab = ref.watch(homeTabProvider);
     return Scaffold(
       body: IndexedStack(
-        index: _tab,
+        index: tab.index,
         children: const [
           PlacesScreen(),
           PlanScreen(),
@@ -25,8 +28,9 @@ class _HomeShellState extends State<HomeShell> {
         ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (index) => setState(() => _tab = index),
+        selectedIndex: tab.index,
+        onDestinationSelected: (index) =>
+            ref.read(homeTabProvider.notifier).state = HomeTab.values[index],
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.place_outlined),
