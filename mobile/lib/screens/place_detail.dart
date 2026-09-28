@@ -11,7 +11,6 @@ import 'package:favorite_places/widgets/place_visuals.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ── date helper (no intl dep) ────────────────────────────────────────────────
 const List<String> _months = [
   'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
 ];
@@ -19,22 +18,17 @@ String _formatDate(DateTime d) => '${_months[d.month-1]} ${d.day}, ${d.year}';
 
 class PlaceDetailScreen extends ConsumerStatefulWidget {
   const PlaceDetailScreen({super.key, required this.place});
-  final Place place;   // the version that was tapped — may go stale
+  final Place place;
 
   @override
   ConsumerState<PlaceDetailScreen> createState() => _PlaceDetailScreenState();
 }
 
 class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
-  // ── AI summary state ─────────────────────────────────────────────────────
-  // Freshly generated this session. A summary cached on the place itself takes
-  // precedence, so revisiting never re-bills a model call.
   PlaceSummary? _summary;
   bool          _loadingSummary = false;
   String?       _summaryError;
 
-  /// The summary to show: whatever we just generated, else the stored one —
-  /// but only while it still matches the current notes.
   PlaceSummary? _effectiveSummary(Place p) {
     if (_summary != null) return _summary;
     final cached = p.summary;
@@ -65,7 +59,6 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
       if (!mounted) return;
       setState(() { _summary = summary; _loadingSummary = false; });
 
-      // Cache it. A failure here only costs a regeneration later.
       try {
         await ref.read(userPlacesProvider.notifier).saveSummary(p.id, summary);
       } catch (_) {}
@@ -79,8 +72,6 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     try {
       await ref.read(userPlacesProvider.notifier).toggleFavorite(placeId);
     } catch (e) {
-      // The provider updates state optimistically, so a write failure would
-      // otherwise leave the heart showing a value that never reached Firestore.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Couldn't update favorite. Try again.")),
@@ -140,7 +131,6 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the provider so the UI stays in sync (e.g. favorite toggle)
     final places  = ref.watch(userPlacesProvider);
     final current = places.firstWhere((p) => p.id == widget.place.id, orElse: () => widget.place);
     final scheme = Theme.of(context).colorScheme;

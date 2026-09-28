@@ -29,8 +29,6 @@ class _GuestLoadingScreenState extends State<GuestLoadingScreen> with SingleTick
       return;
     }
     _drop.forward();
-    // The seed writes all five places in one batch, so the tick-offs are paced
-    // here rather than driven by the places stream.
     _ticker = Timer.periodic(const Duration(milliseconds: 350), (timer) {
       setState(() => _ticked++);
       if (_ticked >= _samples.length) timer.cancel();
@@ -179,7 +177,6 @@ class _MapCardPainter extends CustomPainter {
     );
 
     for (final (i, (c, fill, dot)) in _pins.indexed) {
-      // Each pin falls over 0.6 s, starting 0.25 s after the one before.
       final t = ((progress * 1.1 - i * 0.25) / 0.6).clamp(0.0, 1.0);
       if (t == 0) continue;
       final dy = t < 0.6 ? -14 + 16 * Curves.easeOut.transform(t / 0.6) : 2 - 2 * ((t - 0.6) / 0.4);

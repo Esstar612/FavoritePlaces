@@ -28,7 +28,6 @@ class _PlanThinkingViewState extends ConsumerState<PlanThinkingView> {
   @override
   void initState() {
     super.initState();
-    // The API returns everything at once, so the steps advance on a timer and hold on the last.
     _timer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
       if (_step < _steps.length - 1) setState(() => _step++);
     });

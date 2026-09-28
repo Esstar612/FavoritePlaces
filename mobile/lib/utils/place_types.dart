@@ -47,9 +47,6 @@ PlaceCategory? _category(String type) =>
                 ? PlaceCategory.shopping
                 : null);
 
-/// The most specific category among all of a place's types. Google often lists
-/// a generic type such as tourist_attraction first, so the order it gives
-/// isn't a guide.
 PlaceCategory categoryForTypes(List<String> types) {
   final found = types.map(_category).nonNulls.toSet();
   return _byPriority.firstWhere(found.contains, orElse: () => PlaceCategory.other);

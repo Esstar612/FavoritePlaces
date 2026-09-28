@@ -49,8 +49,6 @@ class PlaceLocation {
   final String address;
 }
 
-/// A generated summary plus the notes it was generated from, so it can be
-/// invalidated when the notes change instead of being regenerated on every view.
 class PlaceSummary {
   const PlaceSummary({
     required this.whyILikedIt,
@@ -64,7 +62,6 @@ class PlaceSummary {
   final String bestTimeToGo;
   final String sourceNotes;
 
-  /// True when [notes] still matches what this summary was built from.
   bool matches(String notes) => notes.trim() == sourceNotes.trim();
 
   Map<String, dynamic> toMap() => {
@@ -89,8 +86,8 @@ class Place {
   Place({
     required this.title,
     required this.location,
-    this.images    = const [],   // picked photos, only populated until they are uploaded
-    this.photoUrls = const [],   // Firebase Storage download URLs — persisted source of truth
+    this.images    = const [],
+    this.photoUrls = const [],
     this.category  = PlaceCategory.other,
     this.tags      = const [],
     this.notes     = '',
@@ -106,15 +103,15 @@ class Place {
 
   final String id;
   final String title;
-  final List<XFile>  images;     // transient — cleared after upload
-  final List<String> photoUrls;  // persisted
+  final List<XFile>  images;
+  final List<String> photoUrls;
   final PlaceLocation location;
   final PlaceCategory category;
   final List<String> tags;
   final String notes;
   final int    rating;
   final bool   isFavorite;
-  final PlaceSummary? summary;   // cached AI summary, null until generated
+  final PlaceSummary? summary;
   final DateTime visitDate;
   final DateTime createdAt;
 
@@ -140,7 +137,6 @@ class Place {
     visitDate:  visitDate  ?? this.visitDate,
   );
 
-  // ── hydrate from a Firestore document map ─────────────────────────────────
   static Place fromFirestore(Map<String, dynamic> data) {
     PlaceCategory cat = PlaceCategory.other;
     try {

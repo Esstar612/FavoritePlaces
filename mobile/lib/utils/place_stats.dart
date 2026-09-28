@@ -31,7 +31,6 @@ class PlaceStats {
   final int places;
   final int favorites;
 
-  // Unrated places (rating 0) are left out, so they don't drag the average down.
   final double? averageRating;
   final int withNotes;
   final int uniqueTags;

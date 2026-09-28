@@ -9,10 +9,6 @@ import 'package:http/http.dart' as http;
 import 'package:favorite_places/config.dart';
 import 'package:favorite_places/utils/units.dart';
 
-/// User preferences, mirrored from `GET /user/settings`.
-///
-/// Defaults here must match the backend's defaults in routes/user.js so an
-/// unauthenticated cold start looks the same as a fresh account.
 @immutable
 class UserSettings {
   const UserSettings({
@@ -36,7 +32,6 @@ class UserSettings {
 
   DistanceUnit unitFor(Locale locale) => distanceUnit ?? defaultUnitFor(locale);
 
-  // Light, dark, or follow the phone; anything unknown stays dark, the app's default look.
   ThemeMode get themeMode => switch (theme) {
         'light' => ThemeMode.light,
         'system' => ThemeMode.system,
@@ -79,9 +74,6 @@ class UserSettings {
       );
 }
 
-/// Owns the two `/user/settings` calls so the fetch happens once at sign-in
-/// rather than on every visit to the Settings screen — that's what lets the
-/// saved theme apply at launch.
 class UserSettingsNotifier extends StateNotifier<UserSettings> {
   UserSettingsNotifier() : super(const UserSettings());
 
@@ -98,8 +90,6 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
     };
   }
 
-  /// Fetch settings for the signed-in user. Safe to call more than once.
-  /// Returns null on success, or a human-readable message on failure.
   Future<String?> load() async {
     if (_loading) return null;
     _loading = true;
@@ -128,12 +118,8 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
     }
   }
 
-  /// Apply [next] locally without persisting — for continuous controls (a
-  /// slider drag) that should not fire a write per frame. Follow with [save].
   void setLocal(UserSettings next) => state = next;
 
-  /// Apply [next] immediately, then persist. Rolls back and returns a message
-  /// if the write fails, so the UI never keeps a value the server rejected.
   Future<String?> save(UserSettings next) async {
     final previous = state;
     state = next;
@@ -162,7 +148,6 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
     }
   }
 
-  /// Drop back to defaults on sign-out so the next user doesn't inherit them.
   void reset() => state = const UserSettings();
 }
 
@@ -171,7 +156,6 @@ final userSettingsProvider =
   (ref) => UserSettingsNotifier(),
 );
 
-/// Theme currently in force. Watched by MyApp.
 final themeModeProvider = Provider<ThemeMode>(
   (ref) => ref.watch(userSettingsProvider).themeMode,
 );

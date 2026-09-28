@@ -8,7 +8,6 @@ import 'package:favorite_places/config.dart';
 const maxRequestChars = 500;
 const startPlaceGoneDetail = 'start_place_id is not one of your places';
 
-// Clips by code point, which is how the API counts its 500-character limit.
 String clipForAgent(String text) => String.fromCharCodes(text.runes.take(maxRequestChars));
 
 class Stop {

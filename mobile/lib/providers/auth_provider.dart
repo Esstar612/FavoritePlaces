@@ -8,8 +8,6 @@ import 'package:favorite_places/services/demo_service.dart';
 import 'package:favorite_places/utils/password_strength.dart';
 
 final authStateProvider = StreamProvider<User?>((ref) {
-  // Unlike authStateChanges, userChanges also emits when a guest is linked to an
-  // account: same uid, no longer anonymous.
   return FirebaseAuth.instance.userChanges();
 });
 
@@ -17,14 +15,12 @@ final guestSeedingProvider = StateProvider<bool>((ref) => false);
 
 final Future<void> _googleSignInReady = GoogleSignIn.instance.initialize();
 
-// ─── Notifier: exposes sign-in / sign-up / sign-out actions ─────────────────
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   AuthNotifier(this._ref) : super(const AsyncValue.data(null));
 
   final Ref _ref;
 
  
-// ── Email / Password sign-up ─────────────────────────────────────────────
 Future<void> signUpWithEmail(String email, String password, String displayName) async {
   state = const AsyncValue.loading();
   try {
@@ -33,19 +29,14 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
         ? await guest.linkWithCredential(EmailAuthProvider.credential(email: email, password: password))
         : await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
 
-    // Set the display name on the new user
     await credential.user?.updateDisplayName(displayName);
     
-    // Force reload to ensure the display name is updated
     await credential.user?.reload();
     
-    // Get the updated user
     final updatedUser = FirebaseAuth.instance.currentUser;
     
     state = const AsyncValue.data(null);
 
-    // User is now automatically signed in!
-    // The authStateChanges stream will emit and AuthGate will navigate
     debugPrint('Sign up successful! User: ${updatedUser?.email}');
   } on FirebaseAuthException catch (e) {
     state = AsyncValue.error(e, StackTrace.empty);
@@ -54,7 +45,6 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
   }
 }
 
-  // ── Email / Password sign-in ─────────────────────────────────────────────
   Future<void> signInWithEmail(String email, String password) async {
     state = const AsyncValue.loading();
     try {
@@ -68,12 +58,9 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
     }
   }
 
-  // ── Google Sign-In ───────────────────────────────────────────────────────
   Future<void> signInWithGoogle() async {
     state = const AsyncValue.loading();
     if (kIsWeb) {
-      // Firebase's own popup, so the button can match the design; the web
-      // google_sign_in plugin only offers Google's rendered button.
       try {
         final guest = FirebaseAuth.instance.currentUser;
         if (guest != null && guest.isAnonymous) {
@@ -108,19 +95,11 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
     }
   }
 
-  // ── Guest / demo sign-in ─────────────────────────────────────────────────
-  /// Signs in anonymously and asks the backend to seed sample places.
-  ///
-  /// Each guest gets their own Firebase uid, so they explore an isolated copy
-  /// of the data — nothing they change is visible to the next visitor, and the
-  /// existing security rules apply unchanged.
   Future<void> continueAsGuest() async {
     state = const AsyncValue.loading();
     _ref.read(guestSeedingProvider.notifier).state = true;
     try {
       await FirebaseAuth.instance.signInAnonymously();
-      // Non-fatal: a guest with an empty list is worse than one with samples,
-      // but not worth blocking sign-in over.
       await DemoService.seed();
       state = const AsyncValue.data(null);
     } on FirebaseAuthException catch (e) {
@@ -132,22 +111,16 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
     }
   }
 
-  // ── Sign-out (works for both providers) ──────────────────────────────────
   Future<void> signOut() async {
     state = const AsyncValue.loading();
     try {
-      // A guest account has no way back in, so leaving it behind would just
-      // accumulate orphaned users and their data.
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && user.isAnonymous) {
         try {
           await user.delete();
         } catch (_) {
-          // Needs recent login, or already gone — fall through to signOut.
         }
       }
-      // Web signs in with Firebase's popup, and google_sign_in has no web client ID, so
-      // calling it there throws before Firebase ever signs out.
       if (!kIsWeb) {
         await _googleSignInReady;
         await GoogleSignIn.instance.signOut();
@@ -159,7 +132,6 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
     }
   }
 
-  // ── Password reset ───────────────────────────────────────────────────────
   Future<void> resetPassword(String email) async {
     state = const AsyncValue.loading();
     try {
@@ -181,7 +153,6 @@ const _accountExistsCodes = {'email-already-in-use', 'credential-already-in-use'
 bool isAccountExistsError(Object error) =>
     error is FirebaseAuthException && _accountExistsCodes.contains(error.code);
 
-// ─── Convenience: human-readable Firebase error messages ────────────────────
 String firebaseAuthErrorMessage(Object error) {
   if (error is FirebaseAuthException) {
     switch (error.code) {
@@ -214,8 +185,6 @@ String firebaseAuthErrorMessage(Object error) {
       case 'admin-restricted-operation':
         return 'Guest sign-in is not enabled for this app.';
       default:
-        // Generic: this helper is shared by the sign-in, sign-up and
-        // password-reset paths, so it can't assume which one failed.
         return 'Something went wrong. Please try again.';
     }
   }
