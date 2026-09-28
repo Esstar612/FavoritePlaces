@@ -136,7 +136,9 @@ Future<void> signUpWithEmail(String email, String password, String displayName) 
           // Needs recent login, or already gone — fall through to signOut.
         }
       }
-      await GoogleSignIn().signOut();
+      // Web signs in with Firebase's popup, and google_sign_in has no web client ID, so
+      // calling it there throws before Firebase ever signs out.
+      if (!kIsWeb) await GoogleSignIn().signOut();
       await FirebaseAuth.instance.signOut();
       state = const AsyncValue.data(null);
     } catch (e, st) {
