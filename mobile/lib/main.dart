@@ -51,6 +51,9 @@ final colorScheme = darkColorScheme;
 ThemeData _themeFor(ColorScheme scheme) {
   final base = ThemeData(
     useMaterial3: true,
+    // Bundled because Flutter web otherwise falls back to a single regular-weight Roboto,
+    // so the designs' medium (500) text renders regular.
+    fontFamily: 'Roboto',
     // Per-scheme, not shared — a dark surface on the light scheme would be
     // unreadable.
     scaffoldBackgroundColor: scheme.surface,
