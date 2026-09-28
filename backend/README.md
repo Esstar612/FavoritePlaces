@@ -33,14 +33,14 @@ Full-featured Node.js + Express backend for the Favorite Places Flutter app with
 
 ## 📋 Prerequisites
 
-1. **Node.js** 18+ ([download](https://nodejs.org/))
+1. **Node.js** 20+ ([download](https://nodejs.org/))
 2. **Firebase Project** with:
    - Authentication enabled
    - Firestore database created
    - Storage bucket created
-   - Service Account key downloaded
-3. **Google Gemini API Key** ([get one here](https://aistudio.google.com/app/apikey)) - **FREE!**
-4. **(Optional)** Google Cloud Vision API enabled for advanced image tagging
+3. **Google Cloud SDK** ([install](https://cloud.google.com/sdk/docs/install)), signed in to the project
+4. **Vertex AI API** enabled on the project: `gcloud services enable aiplatform.googleapis.com`
+5. **(Optional)** Google Cloud Vision API enabled for advanced image tagging
 
 ---
 
@@ -59,46 +59,35 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your credentials:
+Edit `.env`:
 
 ```env
 # Required
 PORT=3000
-GEMINI_API_KEY=your-gemini-api-key-here
-FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccountKey.json
+GOOGLE_CLOUD_PROJECT=your-project-id
+GOOGLE_MAPS_SERVER_KEY=your-geocoding-key-here
 
 # Optional
-GOOGLE_APPLICATION_CREDENTIALS=./google-cloud-key.json
-CORS_ORIGIN=*
+GOOGLE_CLOUD_LOCATION=us-central1
+CORS_ORIGIN=http://localhost:5050
 NODE_ENV=development
 ```
 
-### Step 3: Get Google Gemini API Key (100% FREE!)
+### Step 3: Sign In with Application Default Credentials
 
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Sign in with your Google account
-3. Click **"Create API Key"**
-4. Copy the key and add to `.env`:
-   ```env
-   GEMINI_API_KEY=your-key-here
-   ```
+There are no key files. Gemini (through Vertex AI) and Firebase Admin both use
+Application Default Credentials: your own gcloud login locally, and the Cloud Run
+service account in production.
 
-**Free Tier Benefits:**
-- ✅ 1.5 million requests per month
-- ✅ No credit card required
-- ✅ Rate limits: 15 requests/minute, 1,500/day
-- ✅ Perfect for personal projects!
+```bash
+gcloud auth application-default login
+gcloud auth application-default set-quota-project your-project-id
+```
 
-### Step 4: Add Firebase Service Account
+Your account needs the same access as the production service account (see
+Deployment). A project Owner already has it.
 
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your project → **Project Settings** → **Service Accounts**
-3. Click **Generate new private key**
-4. Save the JSON file as `serviceAccountKey.json` in the `backend/` directory
-
-⚠️ **Important:** Never commit this file to git!
-
-### Step 5: Start the Server
+### Step 4: Start the Server
 
 **Development mode** (with auto-reload):
 ```bash
@@ -364,130 +353,55 @@ Content-Type: application/json
 
 ## 🚢 Deployment
 
-### Option 1: Google Cloud Run (Recommended)
+### Google Cloud Run
 
-Perfect for this backend - serverless, auto-scaling, and Firebase-native.
+The service runs as its own service account and holds no API keys or service
+account keys. Access to Vertex AI, Firestore and Firebase Auth comes from IAM
+roles on that account.
 
-#### Prerequisites
-- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed
-- Billing enabled on your GCP project (still uses free tier for low traffic)
-
-#### Deploy Steps
-
-1. **Create Dockerfile** (if not already present):
-
-```dockerfile
-FROM node:20-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-
-EXPOSE 3000
-
-CMD ["node", "server.js"]
-```
-
-2. **Build and deploy:**
+#### One-time setup
 
 ```bash
-# Build container
-gcloud builds submit --tag gcr.io/YOUR-PROJECT-ID/favorite-places-backend
+PROJECT=your-project-id
+SA=places-backend-runtime@$PROJECT.iam.gserviceaccount.com
 
-# Deploy to Cloud Run
-gcloud run deploy favorite-places-backend \
-  --image gcr.io/YOUR-PROJECT-ID/favorite-places-backend \
-  --platform managed \
+gcloud services enable aiplatform.googleapis.com
+gcloud iam service-accounts create places-backend-runtime --display-name "Places backend runtime"
+for role in roles/aiplatform.user roles/datastore.user roles/firebaseauth.admin; do
+  gcloud projects add-iam-policy-binding $PROJECT --member serviceAccount:$SA --role $role --condition None
+done
+```
+
+| Role | Used for |
+|---|---|
+| `roles/aiplatform.user` | Gemini calls through Vertex AI |
+| `roles/datastore.user` | Firestore reads and writes |
+| `roles/firebaseauth.admin` | Deleting the Firebase Auth user on account deletion |
+
+Verifying ID tokens needs no role.
+
+#### Deploy
+
+From `backend/`:
+
+```bash
+gcloud run deploy favorite-places-backend --source . \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars "NODE_ENV=production" \
-  --set-secrets "GEMINI_API_KEY=gemini-key:latest,FIREBASE_SERVICE_ACCOUNT_JSON=firebase-config:latest"
+  --service-account $SA \
+  --update-env-vars NODE_ENV=production,GOOGLE_CLOUD_PROJECT=$PROJECT,GOOGLE_CLOUD_LOCATION=us-central1,GOOGLE_MAPS_SERVER_KEY=...
 ```
 
-3. **Create secrets:**
-
-```bash
-# Store Gemini API key as secret
-echo -n "your-gemini-api-key" | gcloud secrets create gemini-key --data-file=-
-
-# Store Firebase config as secret
-cat serviceAccountKey.json | gcloud secrets create firebase-config --data-file=-
-```
-
-4. **Update Flutter app:**
-
-```dart
-// mobile/lib/config.dart
-static const String backendUrl = 'https://your-service-xxxxx.a.run.app';
-```
-
-### Option 2: Heroku
-
-```bash
-# Install Heroku CLI and login
-heroku login
-
-# Create app
-heroku create your-app-name
-
-# Set environment variables
-heroku config:set GEMINI_API_KEY=your-key
-heroku config:set NODE_ENV=production
-heroku config:set FIREBASE_SERVICE_ACCOUNT_JSON='paste-entire-service-account-json'
-
-# Deploy
-git push heroku main
-```
-
-### Option 3: VPS (DigitalOcean, AWS EC2, Linode)
-
-1. SSH into your server
-2. Install Node.js 18+:
-   ```bash
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-   sudo apt-get install -y nodejs
-   ```
-3. Clone repository
-4. Copy `.env` and `serviceAccountKey.json`
-5. Install PM2:
-   ```bash
-   sudo npm install -g pm2
-   pm2 start server.js --name favorite-places-backend
-   pm2 startup
-   pm2 save
-   ```
-6. Configure Nginx reverse proxy:
-   ```nginx
-   server {
-       listen 80;
-       server_name yourdomain.com;
-       
-       location / {
-           proxy_pass http://localhost:3000;
-           proxy_http_version 1.1;
-           proxy_set_header Upgrade $http_upgrade;
-           proxy_set_header Connection 'upgrade';
-           proxy_set_header Host $host;
-           proxy_cache_bypass $http_upgrade;
-       }
-   }
-   ```
-7. Install SSL with Let's Encrypt:
-   ```bash
-   sudo certbot --nginx -d yourdomain.com
-   ```
+Then point the app at the service URL in `mobile/lib/config.dart` (`backendUrl`).
 
 ---
 
 ## 🔒 Security Considerations
 
-1. **Environment Variables**
-   - Never commit `.env` or `serviceAccountKey.json`
+1. **Credentials**
+   - No service account keys or Gemini API keys. Locally the server uses your gcloud login, and on Cloud Run its own service account
+   - Never commit `.env`
    - Use `.env.example` as a template
-   - Rotate API keys regularly
 
 2. **HTTPS in Production**
    - Required for secure token transmission
@@ -505,9 +419,9 @@ git push heroku main
      RATE_LIMIT_MAX_REQUESTS=100
      ```
 
-5. **API Key Security**
-   - Gemini API key is free but should still be protected
-   - Monitor usage at https://aistudio.google.com/
+5. **IAM**
+   - The runtime service account has only the three roles listed under Deployment
+   - Review Vertex AI usage in the Cloud Console under Vertex AI
 
 6. **Firebase Rules**
    - Ensure Firestore security rules are properly configured
@@ -603,11 +517,10 @@ gcloud run services logs tail favorite-places-backend
 
 ### Metrics to Monitor
 
-- **Request count**: Ensure within Gemini free tier (1.5M/month)
 - **Latency**: Target < 2s for AI endpoints
 - **Error rate**: Should be < 1%
 - **Memory usage**: Monitor for leaks
-- **API quota**: Check Gemini usage at https://aistudio.google.com/
+- **Vertex AI quota**: Check usage under Vertex AI in the Cloud Console
 
 ### Set Up Alerts (Cloud Run)
 
@@ -616,7 +529,6 @@ gcloud run services logs tail favorite-places-backend
    - Error rate > 5%
    - Average latency > 3s
    - Memory usage > 80%
-   - Request rate approaching Gemini limits
 
 ---
 
@@ -636,44 +548,35 @@ gcloud run services logs tail favorite-places-backend
 - Check header format: `Authorization: Bearer <token>`
 - Verify Firebase project ID matches in both app and backend
 
-### "AI service error: 401"
+### "AI service error: 403" or permission denied
 
-**Symptom:** AI endpoints fail with authentication error
+**Symptom:** AI endpoints fail with a permission error
 
 **Causes:**
-- Invalid Gemini API key
-- API key not set in environment
+- Vertex AI API not enabled on the project
+- The caller lacks `roles/aiplatform.user` (your account locally, the runtime service account on Cloud Run)
 
 **Fixes:**
-- Verify `GEMINI_API_KEY` in `.env`
-- Regenerate key at https://aistudio.google.com/app/apikey
-- Restart server after updating `.env`
+- `gcloud services enable aiplatform.googleapis.com`
+- Grant `roles/aiplatform.user` to the account
+- Locally, rerun `gcloud auth application-default login`
 
 ### "AI service error: 429"
 
 **Symptom:** Too many requests error
 
 **Causes:**
-- Exceeded Gemini rate limits (15/min or 1,500/day)
+- Vertex AI quota for the model exceeded
 
 **Fixes:**
-- Implement request caching
+- Check quotas under Vertex AI in the Cloud Console
 - Add user-side debouncing
-- Consider upgrading to paid tier if needed (unlikely)
 
-### "Failed to initialize Firebase Admin"
+### "GOOGLE_CLOUD_PROJECT is not set"
 
-**Symptom:** Server crashes on startup
+**Symptom:** Server exits on startup
 
-**Causes:**
-- `serviceAccountKey.json` not found
-- Invalid service account JSON
-- Wrong path in `.env`
-
-**Fixes:**
-- Verify file exists: `ls serviceAccountKey.json`
-- Check `FIREBASE_SERVICE_ACCOUNT_PATH` in `.env`
-- Regenerate service account key from Firebase Console
+**Fix:** Set `GOOGLE_CLOUD_PROJECT` in `.env` locally, or with `--update-env-vars` on Cloud Run.
 
 ### CORS errors from Flutter app
 
@@ -698,7 +601,7 @@ gcloud run services logs tail favorite-places-backend
 
 **Fixes:**
 - This is optional! App works without it
-- To enable: Set up `GOOGLE_APPLICATION_CREDENTIALS` in `.env`
+- To enable: `gcloud services enable vision.googleapis.com`
 - Or ignore - Gemini still generates tags without Vision API
 
 ---
@@ -724,20 +627,8 @@ npm audit fix
 
 ### Update Gemini Model
 
-When Google releases new models:
-
-```javascript
-// routes/ai.js - Update model version
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-// Or use Pro for better quality (still free):
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-```
-
-Available models:
-- `gemini-1.5-flash` - Fastest (recommended)
-- `gemini-1.5-pro` - Best quality
-- `gemini-2.0-flash-exp` - Experimental
+The model name is set in `callGemini` in `routes/ai.js`. Check that a new model
+is available on Vertex AI in `GOOGLE_CLOUD_LOCATION` before switching.
 
 ### Add New Routes
 
@@ -772,16 +663,9 @@ If Firestore schema changes:
 
 ## 📈 Scaling Considerations
 
-### Current Limits (Free Tier)
-
-- **Gemini:** 1.5M requests/month (15/min, 1,500/day)
-- **Firebase:** 50K reads/day, 20K writes/day
-- **Cloud Run:** 2M requests/month, 360K GB-seconds
-
 ### When to Scale
 
 Monitor and consider scaling when:
-- Approaching 1M Gemini requests/month
 - Consistent latency > 2s
 - Error rate > 1%
 
@@ -795,11 +679,7 @@ Monitor and consider scaling when:
    - Batch multiple AI requests together
    - Reduce per-request overhead
 
-3. **Upgrade Gemini** (If needed)
-   - Switch to paid tier only if needed
-   - Monitor costs carefully
-
-4. **Horizontal Scaling** (Advanced)
+3. **Horizontal Scaling** (Advanced)
    - Cloud Run auto-scales automatically
    - No code changes needed
 

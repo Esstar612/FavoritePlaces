@@ -12,24 +12,12 @@ dotenv.config();
 // ═══════════════════════════════════════════════════════════════════════════
 // FIREBASE ADMIN INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════════════
-let serviceAccount;
-
-if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-  // Cloud Run deployment: service account JSON in env var
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-} else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
-  // Local development: load from file
-  serviceAccount = await import(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, {
-    with: { type: 'json' }
-  }).then(m => m.default);
-} else {
-  console.error('❌ No Firebase credentials found. Set FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON');
+if (!process.env.GOOGLE_CLOUD_PROJECT) {
+  console.error('❌ GOOGLE_CLOUD_PROJECT is not set');
   process.exit(1);
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+admin.initializeApp();
 
 console.log('✅ Firebase Admin initialized');
 
