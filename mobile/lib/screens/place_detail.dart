@@ -4,6 +4,7 @@ import 'package:favorite_places/screens/add_place.dart';
 import 'package:favorite_places/screens/home_shell.dart';
 import 'package:favorite_places/screens/map.dart';
 import 'package:favorite_places/services/ai_service.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/utils/static_map.dart';
 import 'package:favorite_places/widgets/local_photo.dart';
 import 'package:favorite_places/widgets/place_visuals.dart';
@@ -270,7 +271,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                             Icon(
                               i < current.rating ? Icons.star : Icons.star_border,
                               size: 22,
-                              color: const Color(0xFFF9C74F),
+                              color: scheme.star,
                             ),
                           const SizedBox(width: 8),
                           Text('Your rating', style: muted),
@@ -321,47 +322,50 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                   ],
                   const SizedBox(height: 22),
                   _heading('Location'),
-                  Material(
-                    color: scheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(20),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        InkWell(
-                          onTap: () => _openMap(current),
-                          child: Image.network(
-                            staticMapUrlFor(current.location),
-                            height: 170,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => SizedBox(
+                  DecoratedBox(
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), boxShadow: scheme.cardShadow),
+                    child: Material(
+                      color: scheme.card,
+                      borderRadius: BorderRadius.circular(20),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          InkWell(
+                            onTap: () => _openMap(current),
+                            child: Image.network(
+                              staticMapUrlFor(current.location),
                               height: 170,
-                              child: Icon(Icons.map_outlined, size: 48, color: scheme.onSurfaceVariant),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => SizedBox(
+                                height: 170,
+                                child: Icon(Icons.map_outlined, size: 48, color: scheme.onSurfaceVariant),
+                              ),
                             ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  current.location.address,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: muted,
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    current.location.address,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: muted,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              OutlinedButton.icon(
-                                onPressed: () => _openMap(current),
-                                icon: const Icon(Icons.map_outlined, size: 18),
-                                label: const Text('Open in Maps'),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                OutlinedButton.icon(
+                                  onPressed: () => _openMap(current),
+                                  icon: const Icon(Icons.map_outlined, size: 18),
+                                  label: const Text('Open in Maps'),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -375,6 +379,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
 
   Widget _summaryCard(Place current) {
     final scheme = Theme.of(context).colorScheme;
+    final light = scheme.brightness == Brightness.light;
     final summary = _effectiveSummary(current);
     final muted = TextStyle(fontSize: 14, height: 20 / 14, color: scheme.onSurfaceVariant);
     return Semantics(
@@ -384,7 +389,8 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         decoration: BoxDecoration(
-          color: scheme.surfaceContainerHigh,
+          color: light ? scheme.card : scheme.surfaceContainerHigh,
+          border: light ? Border.all(color: const Color(0xFFE0D4F2)) : null,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -420,7 +426,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
             ] else if (summary != null) ...[
               _SummaryRow(
                 icon: Icons.favorite,
-                colors: (const Color(0xFF633B48), const Color(0xFFFFD9E3)),
+                colors: scheme.pinkBadge,
                 title: 'Why you liked it',
                 body: summary.whyILikedIt,
               ),
@@ -434,7 +440,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
               const SizedBox(height: 16),
               _SummaryRow(
                 icon: Icons.schedule,
-                colors: (const Color(0xFF4A3A10), const Color(0xFFF9C74F)),
+                colors: scheme.yellowBadge,
                 title: 'Best time to go',
                 body: summary.bestTimeToGo,
               ),

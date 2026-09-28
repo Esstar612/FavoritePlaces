@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:favorite_places/models/place.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/utils/place_stats.dart';
 
 const _mixColors = [
@@ -72,7 +73,7 @@ class ProfileStatsCard extends StatelessWidget {
                 average == null ? '–' : average.toStringAsFixed(1),
                 'Avg rating',
                 icon: Icons.star,
-                iconColor: const Color(0xFFF9C74F),
+                iconColor: scheme.star,
               ),
             ],
           ),

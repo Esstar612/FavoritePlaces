@@ -162,7 +162,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _Row(
                 icon: Icons.download_outlined,
                 title: 'Export my data',
-                subtitle: 'Download all ${stats.places} places as JSON',
+                subtitle: stats.places == 1
+                    ? 'Download your 1 place as JSON'
+                    : 'Download all ${stats.places} places as JSON',
                 trailing: _isExporting
                     ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : null,

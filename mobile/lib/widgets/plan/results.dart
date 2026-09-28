@@ -6,6 +6,7 @@ import 'package:favorite_places/providers/plan.dart';
 import 'package:favorite_places/providers/user_places.dart';
 import 'package:favorite_places/screens/route_map.dart';
 import 'package:favorite_places/services/agent_service.dart';
+import 'package:favorite_places/utils/palette.dart';
 import 'package:favorite_places/utils/static_map.dart';
 import 'package:favorite_places/widgets/place_visuals.dart';
 import 'package:favorite_places/widgets/plan/common.dart';
@@ -107,8 +108,9 @@ class _RouteCard extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainer,
+        color: theme.colorScheme.card,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: theme.colorScheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -161,8 +163,9 @@ class _StopCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainer,
+        color: theme.colorScheme.card,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: theme.colorScheme.cardShadow,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,7 +198,7 @@ class _StopCard extends StatelessWidget {
                 Row(
                   children: [
                     Text('${place.category.displayName} · ', style: muted),
-                    const Icon(Icons.star, size: 12, color: Color(0xFFF9C74F)),
+                    Icon(Icons.star, size: 12, color: theme.colorScheme.star),
                     Text('${place.rating}', style: muted),
                   ],
                 ),
@@ -235,7 +238,7 @@ class _Thumb extends StatelessWidget {
             decoration: BoxDecoration(
               color: scheme.primary,
               shape: BoxShape.circle,
-              border: Border.all(color: scheme.surfaceContainer, width: 2),
+              border: Border.all(color: scheme.card, width: 2),
             ),
             child: Text(
               '$number',
