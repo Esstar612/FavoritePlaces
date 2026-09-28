@@ -8,10 +8,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PlacesList extends ConsumerWidget {
-  const PlacesList({super.key, required this.places, this.evidenceQuery});
+  const PlacesList({
+    super.key,
+    required this.places,
+    this.evidenceQuery,
+    this.groupByCategory = false,
+  });
 
   final List<Place> places;
   final String? evidenceQuery;
+  final bool groupByCategory;
 
   void _showOptionsMenu(BuildContext context, Place place, WidgetRef ref) {
     showModalBottomSheet(
@@ -134,26 +140,40 @@ class PlacesList extends ConsumerWidget {
       );
     }
 
+    final rows = <Object>[
+      for (final (i, place) in places.indexed) ...[
+        if (groupByCategory && (i == 0 || places[i - 1].category != place.category)) place.category,
+        place,
+      ],
+    ];
     return ListView.separated(
-      itemCount: places.length,
+      itemCount: rows.length,
       // Allow the pull gesture even when the list is shorter than the screen.
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (ctx, index) {
-        final place = places[index];
-        return PlaceCard(
-          place: place,
-          onTap: () => Navigator.of(context).push(
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => PlaceDetailScreen(place: place),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-                  FadeTransition(opacity: animation, child: child),
+      separatorBuilder: (context, index) =>
+          SizedBox(height: index + 1 < rows.length && rows[index + 1] is PlaceCategory ? 20 : 12),
+      itemBuilder: (ctx, index) => switch (rows[index]) {
+        PlaceCategory category => Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              '${category.icon} ${category.displayName}',
+              style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
-          onLongPress: () => _showOptionsMenu(context, place, ref),
-          evidence: evidenceQuery == null ? null : evidenceFor(place, evidenceQuery!),
-        );
+        final Place place => PlaceCard(
+            place: place,
+            onTap: () => Navigator.of(context).push(
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => PlaceDetailScreen(place: place),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+                    FadeTransition(opacity: animation, child: child),
+              ),
+            ),
+            onLongPress: () => _showOptionsMenu(context, place, ref),
+            evidence: evidenceQuery == null ? null : evidenceFor(place, evidenceQuery!),
+          ),
+        _ => const SizedBox.shrink(),
       },
     );
   }

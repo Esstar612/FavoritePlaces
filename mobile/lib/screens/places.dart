@@ -12,14 +12,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum SortOption {
-  recent('Recent'),
-  alphabetical('A to Z'),
-  rating('Rating'),
-  category('Category');
+  recent('Recent', 'Recently added first', Icons.schedule),
+  alphabetical('A to Z', 'By name', Icons.sort_by_alpha),
+  rating('Rating', 'Highest first', Icons.star_outline),
+  category('Category', 'Grouped, with a header for each', Icons.category_outlined);
 
-  const SortOption(this.label);
+  const SortOption(this.label, this.detail, this.icon);
 
   final String label;
+  final String detail;
+  final IconData icon;
 }
 
 class PlacesScreen extends ConsumerStatefulWidget {
@@ -39,6 +41,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   String _searchQuery = '';
   PlaceCategory? _filterCategory;
   SortOption _sortOption = SortOption.recent;
+  bool _favoritesFirst = false;
 
   // ── AI smart-search state ────────────────────────────────────────────────
   // When non-null, the list is restricted to these ids instead of the plain
@@ -72,6 +75,71 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
         const SnackBar(content: Text("Couldn't refresh. Check your connection.")),
       );
     }
+  }
+
+  void _showSortSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          void update(VoidCallback change) {
+            setState(change);
+            setSheetState(() {});
+          }
+
+          final scheme = Theme.of(sheetContext).colorScheme;
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 0, 16, 8),
+                  child: Text('Sort by', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
+                ),
+                RadioGroup<SortOption>(
+                  groupValue: _sortOption,
+                  onChanged: (option) {
+                    if (option == null) return;
+                    update(() => _sortOption = option);
+                    Navigator.of(sheetContext).pop();
+                  },
+                  child: Column(
+                    children: [
+                      for (final option in SortOption.values)
+                        RadioListTile<SortOption>(
+                          value: option,
+                          tileColor: option == _sortOption ? scheme.surfaceContainerHigh : null,
+                          title: Text(
+                            option.label,
+                            style: TextStyle(fontWeight: option == _sortOption ? FontWeight.w500 : null),
+                          ),
+                          subtitle: Text(option.detail),
+                          secondary: Icon(
+                            option.icon,
+                            color: option == _sortOption ? scheme.primary : scheme.onSurfaceVariant,
+                          ),
+                          controlAffinity: ListTileControlAffinity.leading,
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(indent: 24, endIndent: 24),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                  title: const Text('Favorites first'),
+                  subtitle: const Text('Keep hearted places at the top'),
+                  value: _favoritesFirst,
+                  onChanged: (value) => update(() => _favoritesFirst = value),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _clearSearch() {
@@ -155,22 +223,23 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
       filtered = filtered.where((p) => p.isFavorite).toList();
     }
     
-    // Sort
-    switch (_sortOption) {
-      case SortOption.alphabetical:
-        filtered.sort((a, b) => a.title.compareTo(b.title));
-        break;
-      case SortOption.rating:
-        filtered.sort((a, b) => b.rating.compareTo(a.rating));
-        break;
-      case SortOption.category:
-        filtered.sort((a, b) => a.category.name.compareTo(b.category.name));
-        break;
-      case SortOption.recent:
-        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        break;
-    }
-    
+    int byOption(Place a, Place b) => switch (_sortOption) {
+          SortOption.alphabetical => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+          SortOption.rating => b.rating.compareTo(a.rating),
+          SortOption.category => a.category.displayName.compareTo(b.category.displayName),
+          SortOption.recent => 0,
+        };
+    int byFavorite(Place a, Place b) =>
+        _favoritesFirst ? (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0) : 0;
+    filtered.sort((a, b) {
+      final grouped = _sortOption == SortOption.category;
+      final orders = grouped ? [byOption(a, b), byFavorite(a, b)] : [byFavorite(a, b), byOption(a, b)];
+      for (final order in orders) {
+        if (order != 0) return order;
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
     return filtered;
   }
 
@@ -309,32 +378,10 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                         style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),
-                    PopupMenuButton<SortOption>(
-                      tooltip: 'Sort: ${_sortOption.label}. Change sort',
-                      initialValue: _sortOption,
-                      onSelected: (option) => setState(() => _sortOption = option),
-                      itemBuilder: (context) => [
-                        for (final option in SortOption.values)
-                          PopupMenuItem(value: option, child: Text(option.label)),
-                      ],
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.sort, size: 18, color: Theme.of(context).colorScheme.primary),
-                            const SizedBox(width: 6),
-                            Text(
-                              _sortOption.label,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    TextButton.icon(
+                      onPressed: _showSortSheet,
+                      icon: const Icon(Icons.sort, size: 18),
+                      label: Text(_sortOption.label),
                     ),
                   ],
                 ),
@@ -351,6 +398,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                         : PlacesList(
                             places: filteredPlaces,
                             evidenceQuery: answering ? _searchController.text : null,
+                            groupByCategory: _sortOption == SortOption.category,
                           ),
               ),
             ),
