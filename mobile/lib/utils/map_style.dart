@@ -1,4 +1,6 @@
-// Same palette as the dark Static Maps style in static_map.dart, so the live
+import 'package:flutter/material.dart';
+
+// Same palettes as the Static Maps styles in static_map.dart, so the live
 // map and Plan's route card read as one surface. Points of interest stay
 // visible here because they help people find what to add.
 const darkMapStyle = '''
@@ -10,3 +12,15 @@ const darkMapStyle = '''
   {"featureType": "road", "elementType": "geometry", "stylers": [{"color": "#3e3847"}]}
 ]
 ''';
+
+const lightMapStyle = '''
+[
+  {"elementType": "geometry", "stylers": [{"color": "#f1ecf4"}]},
+  {"elementType": "labels.text.fill", "stylers": [{"color": "#49454e"}]},
+  {"elementType": "labels.text.stroke", "stylers": [{"color": "#fef7ff"}]},
+  {"featureType": "water", "elementType": "geometry", "stylers": [{"color": "#cde2f4"}]},
+  {"featureType": "road", "elementType": "geometry", "stylers": [{"color": "#ffffff"}]}
+]
+''';
+
+String mapStyleFor(Brightness brightness) => brightness == Brightness.light ? lightMapStyle : darkMapStyle;

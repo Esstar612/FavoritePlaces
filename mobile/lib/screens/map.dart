@@ -17,7 +17,7 @@ class MapScreen extends StatelessWidget {
       appBar: AppBar(title: Text(title ?? location.address, maxLines: 1, overflow: TextOverflow.ellipsis)),
       body: GoogleMap(
         initialCameraPosition: CameraPosition(target: target, zoom: 16),
-        style: darkMapStyle,
+        style: mapStyleFor(Theme.of(context).brightness),
         markers: {
           Marker(
             markerId: const MarkerId('place'),

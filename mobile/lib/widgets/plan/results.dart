@@ -116,7 +116,10 @@ class _RouteCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Image.network(
-            staticRouteMapUrl([for (final (_, place) in stops) place.location]),
+            staticRouteMapUrl(
+              [for (final (_, place) in stops) place.location],
+              light: theme.brightness == Brightness.light,
+            ),
             height: 176,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stack) => const SizedBox(height: 176),
