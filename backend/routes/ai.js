@@ -255,6 +255,8 @@ Return ONLY valid JSON in this format (no other text, no markdown):
   "explanation": "Brief explanation of why these places match"
 }
 
+The explanation is shown to the person who saved these places, so speak to them as "you" and "your", for example "Your notes say Blue Bottle is quiet before 9." Never call them "the user".
+
 If no places match, return empty array with explanation.
 
 User query: "${scopedQuery}"
