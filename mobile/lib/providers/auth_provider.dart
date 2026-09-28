@@ -6,9 +6,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:favorite_places/services/demo_service.dart';
 import 'package:favorite_places/utils/password_strength.dart';
 
-// ─── Stream provider: re-emits the current User (or null) ───────────────────
 final authStateProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
+  // Unlike authStateChanges, userChanges also emits when a guest is linked to an
+  // account: same uid, no longer anonymous.
+  return FirebaseAuth.instance.userChanges();
 });
 
 final guestSeedingProvider = StateProvider<bool>((ref) => false);
