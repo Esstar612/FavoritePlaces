@@ -1,0 +1,62 @@
+name: Mobile CI
+
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-ci.yml'
+      - '.github/workflows/firebase-hosting-merge.yml'
+      - '.github/workflows/deploy-appetize.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Analyze, test and build web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: mobile/.fvmrc
+          channel: stable
+          cache: true
+
+      - run: cp lib/config.example.dart lib/config.dart
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - run: flutter test
+      - run: flutter build web --release
+
+  android:
+    name: Build APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: mobile/.fvmrc
+          channel: stable
+          cache: true
+
+      - run: cp lib/config.example.dart lib/config.dart
+      - run: flutter pub get
+      - run: flutter build apk --release
