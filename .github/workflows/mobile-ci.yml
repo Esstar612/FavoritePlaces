@@ -31,7 +31,7 @@ jobs:
           channel: stable
           cache: true
 
-      - run: cp lib/config.example.dart lib/config.dart
+      - run: sed 's#YOUR_[A-Z_]*_URL#https://example.invalid#' lib/config.example.dart > lib/config.dart
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - run: flutter test
@@ -57,6 +57,20 @@ jobs:
           channel: stable
           cache: true
 
-      - run: cp lib/config.example.dart lib/config.dart
+      - run: sed 's#YOUR_[A-Z_]*_URL#https://example.invalid#' lib/config.example.dart > lib/config.dart
+      - name: Placeholder google-services.json
+        run: |
+          cat > android/app/google-services.json <<'JSON'
+          {
+            "project_info": {"project_number": "000000000000", "project_id": "ci-placeholder", "storage_bucket": "ci-placeholder.appspot.com"},
+            "client": [{
+              "client_info": {"mobilesdk_app_id": "1:000000000000:android:0000000000000000", "android_client_info": {"package_name": "com.star.favorite_places"}},
+              "oauth_client": [],
+              "api_key": [{"current_key": "ci-placeholder"}],
+              "services": {"appinvite_service": {"other_platform_oauth_client": []}}
+            }],
+            "configuration_version": "1"
+          }
+          JSON
       - run: flutter pub get
       - run: flutter build apk --release
