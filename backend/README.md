@@ -408,8 +408,9 @@ Then point the app at the service URL in `mobile/lib/config.dart` (`backendUrl`)
    - Use Cloud Run (auto HTTPS) or Let's Encrypt
 
 3. **CORS Configuration**
-   - Development: `CORS_ORIGIN=*`
-   - Production: `CORS_ORIGIN=https://your-app.web.app`
+   - Development: `CORS_ORIGIN=http://localhost:5050`
+   - Production: `CORS_ORIGIN=https://favorite-places-app-94adb.web.app,https://favorite-places-app-94adb.firebaseapp.com,http://localhost:5050`
+   - Never `*`: any site could then call the API with a stolen ID token
 
 4. **Rate Limiting**
    - Already configured: 100 requests per 15 minutes
@@ -587,8 +588,7 @@ gcloud run services logs tail favorite-places-backend
 - Missing CORS headers
 
 **Fixes:**
-- Development: `CORS_ORIGIN=*`
-- Production: `CORS_ORIGIN=https://your-app.web.app`
+- Add the page's origin to `CORS_ORIGIN` (comma-separated, no trailing slash)
 - Restart server after changing `.env`
 
 ### Google Cloud Vision errors (Optional)
