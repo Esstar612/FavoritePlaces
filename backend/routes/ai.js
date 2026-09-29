@@ -1,5 +1,5 @@
 import express from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import vision from '@google-cloud/vision';
 
 const router = express.Router();
@@ -7,12 +7,10 @@ const router = express.Router();
 // ═══════════════════════════════════════════════════════════════════════════
 // GOOGLE GEMINI CLIENT
 // ═══════════════════════════════════════════════════════════════════════════
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// responseMimeType makes Gemini emit bare JSON, so parseJSON() below is only a
-// fallback rather than the primary path.
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash-lite',
-  generationConfig: { responseMimeType: 'application/json' },
+const ai = new GoogleGenAI({
+  vertexai: true,
+  project: process.env.GOOGLE_CLOUD_PROJECT,
+  location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
 });
 
 // Caps on caller-supplied input that gets interpolated into a prompt.
@@ -40,9 +38,12 @@ try {
  */
 async function callGemini(prompt) {
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-lite',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' },
+    });
+    return response.text;
   } catch (error) {
     console.error('Gemini API error:', error);
     throw new Error(`AI service error: ${error.message}`);

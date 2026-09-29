@@ -146,34 +146,32 @@ npm install
 cp .env.example .env
 ```
 
-Fill in `.env` — every variable in the example is one the server actually reads:
+Fill in `.env`. Every variable in the example is one the server actually reads:
 
 ```env
-GEMINI_API_KEY=...                              # required, all /ai routes
+GOOGLE_CLOUD_PROJECT=your-project-id            # required
 GOOGLE_MAPS_SERVER_KEY=...                      # required, /maps/reverse-geocode
-FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccountKey.json
 CORS_ORIGIN=https://your-app.web.app
 ```
 
-Download a service account key (Firebase Console → Project Settings → Service
-Accounts → Generate new private key) and save it as `backend/serviceAccountKey.json`.
-Both that file and `.env` are gitignored, and a `.dockerignore` keeps them out of
-any image you build.
+There are no key files. Gemini (through Vertex AI) and Firebase Admin both use
+Application Default Credentials, so sign in once with gcloud:
 
 ```bash
+gcloud auth application-default login
+gcloud auth application-default set-quota-project your-project-id
 npm run dev     # http://localhost:8080
 ```
 
-Deploy:
+Deploy (the service account and its IAM roles are set up once, as described in
+`backend/README.md`):
 
 ```bash
 gcloud run deploy favorite-places-backend --source . \
-  --region us-central1 --platform managed \
-  --update-env-vars GOOGLE_MAPS_SERVER_KEY=...
+  --region us-central1 \
+  --service-account places-backend-runtime@your-project-id.iam.gserviceaccount.com \
+  --update-env-vars GOOGLE_CLOUD_PROJECT=your-project-id,GOOGLE_CLOUD_LOCATION=us-central1,GOOGLE_MAPS_SERVER_KEY=...
 ```
-
-On Cloud Run, pass the service account JSON as `FIREBASE_SERVICE_ACCOUNT_JSON`
-(the whole document as one string) instead of a file path.
 
 ---
 

@@ -30,9 +30,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy application code.  .dockerignore keeps .env, serviceAccountKey.json and
-# the host's node_modules out of the image — credentials are supplied at run time
-# via FIREBASE_SERVICE_ACCOUNT_JSON.
+# Copy application code.  .dockerignore keeps .env and the host's node_modules
+# out of the image.
 COPY --chown=nodejs:nodejs . .
 
 # Switch to non-root user
