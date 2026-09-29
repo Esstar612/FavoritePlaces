@@ -134,8 +134,8 @@ Flutter app (Android + web)
 |---|---|---|
 | `agent-ci.yml` | PRs and pushes to `main` that change `agent/` | pytest, a container check, then on `main` the full eval suite on both providers and a Cloud Run deploy |
 | `mobile-ci.yml` | PRs that change `mobile/` | analyze, tests, a web build and an APK build |
-| `firebase-hosting-merge.yml` | pushes to `main` | analyze, tests, then deploy the web app to Firebase Hosting |
-| `deploy-appetize.yml` | pushes to `main` | tests, then build the APK and upload it to Appetize |
+| `firebase-hosting-merge.yml` | pushes to `main` that change `mobile/` | analyze, tests, then deploy the web app to Firebase Hosting |
+| `deploy-appetize.yml` | pushes to `main` that change `mobile/` | tests, then build the APK and upload it to Appetize |
 | `codeql.yml` | PRs, pushes and a schedule | code scanning |
 
 - **The eval gate:** 32 cases x 3 repetitions x 2 providers = 192 agent runs
