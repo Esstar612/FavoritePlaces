@@ -11,6 +11,9 @@ jobs:
   build_and_deploy:
     name: Build Flutter web and deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: 📥 Checkout code
@@ -66,10 +69,11 @@ jobs:
       - name: 🔨 Build web
         run: cd mobile && flutter build web --release
 
-      - name: 🚀 Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: 🔑 Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FAVORITE_PLACES_APP_94ADB }}
-          channelId: live
-          projectId: favorite-places-app-94adb
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_HOSTING_DEPLOYER_SA }}
+
+      - name: 🚀 Deploy to Firebase Hosting
+        run: npx --yes firebase-tools@15.32.0 deploy --only hosting --project favorite-places-app-94adb --non-interactive
