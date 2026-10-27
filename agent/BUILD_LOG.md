@@ -1140,3 +1140,76 @@ Turning on Anthropic's automatic prompt caching cut the eval suite's Claude inpu
 ### Later
 - Repeat the eval run to see whether the lower Claude scores are variance.
 - Measure caching on production traffic, which would need tracing or usage logging in Cloud Run.
+
+---
+
+## 2026-10-26: Eval gate run on a dependency update, and current test counts
+
+### What we built
+- No code. This entry records CI run 36506638793 (2026-09-29), the merge of
+  #108, which isn't logged above, plus test counts measured on 2026-10-26.
+- #108 was a Dependabot update that widened the uvicorn range in
+  `agent/pyproject.toml` from `<0.54` to `<0.55` (uvicorn 0.54.0). Nothing
+  else changed.
+- `BUILD_REPORT.md` at the repo root describes the whole project and cites
+  this run as the latest eval result.
+
+### Decisions made
+- **Logged even though it's a dependency bump.** It's the most recent full
+  eval gate on `main` and the first run after the prompt-caching run, so it's
+  the second data point on whether that run's lower Claude scores were
+  variance.
+
+### Numbers measured
+- **CI run 36506638793** (`gh run view 36506638793 --log`), 32 cases x 3
+  repetitions per provider, all gates and thresholds passed. Experiments
+  `outing-agent-main-anthropic-e5164c69` and `outing-agent-main-openai-de243bca`.
+
+  | Scorer | Claude, caching run (79232ce8) | Claude, this run | GPT, caching run (9c541271) | GPT, this run |
+  |---|---|---|---|---|
+  | `grounded` (gate) | 1.000 | 1.000 (n=96) | 1.000 | 1.000 (n=96) |
+  | `no_forbidden` (gate) | 1.000 | 1.000 (n=96) | 1.000 | 1.000 (n=96) |
+  | `covers_request` | 1.000 | 1.000 (n=36) | 1.000 | 1.000 (n=36) |
+  | `details_before_recommending` | 0.986 | 0.958 (n=71) | 1.000 | 1.000 (n=72) |
+  | `empty_when_nothing_fits` | 0.917 | 1.000 (n=12) | 1.000 | 1.000 (n=12) |
+  | `expected_recall` | 0.902 | 0.962 (n=66) | 0.985 | 1.000 (n=66) |
+  | `required_tools_used` | 0.938 | 0.963 (n=81) | 1.000 | 1.000 (n=81) |
+  | `respects_sequence` | 1.000 | 1.000 (n=33) | 1.000 | 1.000 (n=33) |
+  | `route_when_multi_stop` | 0.881 | 0.929 (n=42) | 1.000 | 1.000 (n=42) |
+  | `tool_call_budget` | 1.000 | 0.979 (n=96) | 0.958 | 0.979 (n=96) |
+  | `fallback_rate` (report only) | 0.042 | 0.031 (n=96) | 0.000 | 0.000 (n=96) |
+  | `asks_when_vague` (report only) | 1.000 | 0.917 (n=12) | 1.000 | 1.000 (n=12) |
+  | `no_needless_question` (report only) | 0.964 | 1.000 (n=84) | 1.000 | 1.000 (n=84) |
+
+- **Whole `agent-ci.yml` runs on `main`**
+  (`gh run list --workflow agent-ci.yml --branch main --limit 5`), oldest to
+  newest: 36312308423 13m19s, 36314896551 13m22s, 36360813263 13m55s,
+  36421686082 16m41s, 36506638793 15m58s.
+- **`pytest -q`** (`agent/tests/`): 263 passed in 16.03s.
+- **`flutter test`** (`mobile/test/`): 131 passed.
+
+### Problems hit and how we solved them
+- `pytest` wasn't found until the virtualenv was activated
+  (`source .venv/bin/activate`).
+
+### Observations
+- Claude's `expected_recall`, `route_when_multi_stop` and
+  `empty_when_nothing_fits` went back up to 0.962, 0.929 and 1.000, close to
+  the Step 5 run (0.955, 0.929, 1.000). The only change was the uvicorn range,
+  which doesn't touch what the model sees, so the caching run's lower scores
+  look like run-to-run variance. Three runs can't rule out a small real
+  change.
+- Claude's `asks_when_vague` was 0.917: it answered 1 of 12 vague runs
+  instead of asking. Which case it was hasn't been checked. It's report-only,
+  so the gate didn't catch it.
+
+### Resume claims moved forward
+- **3:** another dependency update went through the full eval gate on both
+  providers before deploying.
+
+### Case study
+none
+
+### Later
+- Identify Claude's vague run that didn't escalate in experiment
+  `outing-agent-main-anthropic-e5164c69`.
